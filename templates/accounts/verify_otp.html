@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email OTP - Campus Marketplace{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto my-12 px-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10">
+        <!-- Icon & Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 mb-4 shadow-inner ring-8 ring-indigo-50/50 dark:ring-indigo-950/30">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">Verify Your Email</h1>
+            
+            {% if email %}
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    We sent a 6-digit verification code to
+                </p>
+                <p class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 break-all">
+                    {{ email }}
+                </p>
+            {% else %}
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    Enter your registered student email and the 6-digit verification code.
+                </p>
+            {% endif %}
+        </div>
+
+        {% if otp_code_preview and debug %}
+            <!-- Local Development Quick Helper -->
+            <div class="mb-6 p-3.5 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/80 text-center">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">⚡ Development Mode Helper</p>
+                <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Your verification code sent via Gmail SMTP is:</p>
+                <div class="mt-1.5 inline-block px-3 py-1 bg-white dark:bg-slate-900 rounded-lg border border-indigo-200 dark:border-indigo-800 font-mono text-xl font-black text-indigo-600 dark:text-indigo-400 tracking-widest shadow-sm">
+                    {{ otp_code_preview }}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Verification Form -->
+        <form method="post" action="{% url 'accounts:verify_otp' %}{% if email %}?email={{ email }}{% endif %}" class="space-y-6" id="otpForm" novalidate>
+            {% csrf_token %}
+            
+            {% if need_email_input %}
+                <div>
+                    <label for="id_email_input" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Your Registered Campus Email *
+                    </label>
+                    <input type="email" name="email" id="id_email_input" value="{{ email }}" placeholder="student@campus.ac.in" required
+                           class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                </div>
+            {% else %}
+                <input type="hidden" name="email" value="{{ email }}">
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                <div class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
+                    {% for error in form.non_field_errors %}
+                        <p class="font-medium flex items-center gap-1.5">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>{{ error }}</span>
+                        </p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.otp_code.id_for_label }}" class="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
+                    Enter 6-Digit Code
+                </label>
+                {{ form.otp_code }}
+                {% if form.otp_code.errors %}
+                    <p class="text-xs text-rose-600 dark:text-rose-400 text-center mt-2 font-medium">{{ form.otp_code.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center justify-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Code expires in <strong class="text-slate-700 dark:text-slate-300">10 minutes</strong></span>
+            </div>
+
+            <!-- Spam Folder Notice Callout -->
+            <div class="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/60 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 text-left">
+                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <span class="font-semibold">Check Spam / Promotions folder:</span>
+                    <span class="text-amber-700 dark:text-amber-300"> If you don't see the email within 10 seconds, please check your <strong>Spam</strong> or <strong>Promotions</strong> folder.</span>
+                </div>
+            </div>
+
+            <button type="submit" id="submitOtpBtn" class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold shadow-lg shadow-indigo-600/25 transition-all text-sm flex items-center justify-center gap-2">
+                <span>Verify & Activate Account</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+        </form>
+
+        <!-- Resend Section -->
+        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                Didn't receive the verification email?
+            </p>
+
+            <form method="post" action="{% url 'accounts:resend_otp' %}{% if email %}?email={{ email }}{% endif %}" id="resendForm">
+                {% csrf_token %}
+                <input type="hidden" name="email" value="{{ email }}">
+
+                {% if seconds_remaining > 0 %}
+                    <button type="submit" id="resendBtn" disabled
+                            class="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 dark:text-slate-600 cursor-not-allowed transition py-2 px-4 rounded-lg bg-slate-100 dark:bg-slate-800/60">
+                        <svg class="w-4 h-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span>Resend in <span id="cooldownTimer">{{ seconds_remaining }}</span>s</span>
+                    </button>
+                {% else %}
+                    <button type="submit" id="resendBtn"
+                            class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline transition py-1.5 px-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Resend 6-Digit Code</span>
+                    </button>
+                {% endif %}
+            </form>
+
+            <div class="mt-4">
+                <a href="{% url 'accounts:register' %}" class="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition">
+                    &larr; Use a different email address
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Automatically sanitize OTP input (strip spaces, dashes, letters)
+    (function() {
+        const otpInput = document.getElementById('id_otp_code');
+        if (otpInput) {
+            otpInput.addEventListener('input', function(e) {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 6);
+                if (e.target.value !== cleaned) {
+                    e.target.value = cleaned;
+                }
+            });
+        }
+
+        // Live countdown timer for the Resend button
+        const timerSpan = document.getElementById('cooldownTimer');
+        const resendBtn = document.getElementById('resendBtn');
+        if (timerSpan && resendBtn) {
+            let seconds = parseInt(timerSpan.textContent, 10);
+            if (seconds > 0) {
+                const interval = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        resendBtn.disabled = false;
+                        resendBtn.className = "inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline transition py-1.5 px-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer";
+                        resendBtn.innerHTML = `
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Resend 6-Digit Code</span>
+                        `;
+                    } else {
+                        timerSpan.textContent = seconds;
+                    }
+                }, 1000);
+            }
+        }
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Campus Marketplace - Buy & Sell Textbooks, Tech & Gear{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Hero Banner -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-sky-900 text-white p-8 md:p-12 shadow-xl">
+        <div class="relative z-10 max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md border border-white/20 mb-4 text-sky-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>Verified Campus Network</span>
+            </div>
+            <h1 class="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+                Buy & Sell Safely Within Your Campus
+            </h1>
+            <p class="mt-3 text-slate-200 text-sm sm:text-base leading-relaxed">
+                Save money on textbooks with ISBN auto-matching, find dorm essentials, and pass along gadgets to fellow students without shipping hassles or platform fees.
+            </p>
+            <div class="mt-6 flex flex-wrap items-center gap-4">
+                <a href="{% url 'marketplace:listing_create' %}" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-indigo-900 font-bold text-sm shadow-md hover:bg-slate-100 hover:shadow-lg transition-all active:scale-95">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Post an Item Now</span>
+                </a>
+                <a href="#browse-feed" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold text-sm border border-white/20 transition">
+                    <span>Explore Listings ({{ total_count }})</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Decorative graphics -->
+        <div class="absolute -right-10 -bottom-10 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none"></div>
+        <div class="absolute right-12 top-1/2 -translate-y-1/2 hidden lg:block opacity-20">
+            <svg class="w-72 h-72 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Filter & Discovery Section -->
+    <div id="browse-feed" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
+        <!-- Search & Control Form -->
+        <form method="get" action="{% url 'marketplace:listing_list' %}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+            <!-- Search Keyword -->
+            <div class="sm:col-span-2 lg:col-span-5 relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </span>
+                <input type="text"
+                       name="q"
+                       value="{{ query }}"
+                       placeholder="Search textbooks, laptops, couches..."
+                       class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            </div>
+
+            <!-- Category Filter -->
+            <div class="sm:col-span-1 lg:col-span-3">
+                <select name="category" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                    <option value="">All Categories</option>
+                    {% for cat_key, cat_label in categories %}
+                        <option value="{{ cat_key }}" {% if selected_category == cat_key %}selected{% endif %}>
+                            {{ cat_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="sm:col-span-1 lg:col-span-2">
+                <select name="status" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                    <option value="AVAILABLE" {% if selected_status == 'AVAILABLE' %}selected{% endif %}>Available Only</option>
+                    <option value="ALL" {% if selected_status == 'ALL' %}selected{% endif %}>All Listings (incl. Sold)</option>
+                    <option value="SOLD" {% if selected_status == 'SOLD' %}selected{% endif %}>Sold Only</option>
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="sm:col-span-1 lg:col-span-2">
+                <select name="sort" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                    <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                    <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                </select>
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="sm:col-span-2 lg:col-span-12 flex items-center justify-between pt-1">
+                <div class="text-xs text-slate-500">
+                    Showing <span class="font-bold text-slate-800 dark:text-slate-200">{{ total_count }}</span> listing{{ total_count|pluralize }}
+                    {% if query %} for "<span class="font-semibold text-indigo-600">{{ query }}</span>"{% endif %}
+                </div>
+                <div class="flex items-center gap-2">
+                    {% if query or selected_category or selected_status != 'AVAILABLE' or sort_by != 'newest' %}
+                        <a href="{% url 'marketplace:listing_list' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 transition">
+                            Reset Filters
+                        </a>
+                    {% endif %}
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm transition">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Category Pills Shortcut -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs no-scrollbar">
+            <span class="font-semibold text-slate-400 shrink-0">Quick Filter:</span>
+            <a href="{% url 'marketplace:listing_list' %}?status={{ selected_status }}"
+               class="px-3 py-1.5 rounded-full font-medium transition shrink-0 {% if not selected_category %}bg-indigo-600 text-white shadow-sm{% else %}bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200{% endif %}">
+                All
+            </a>
+            {% for cat_key, cat_label in categories %}
+                <a href="{% url 'marketplace:listing_list' %}?category={{ cat_key }}&status={{ selected_status }}"
+                   class="px-3 py-1.5 rounded-full font-medium transition shrink-0 {% if selected_category == cat_key %}bg-indigo-600 text-white shadow-sm{% else %}bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200{% endif %}">
+                    {{ cat_label }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Listings Feed Grid -->
+    {% if listings %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for listing in listings %}
+                {% include 'marketplace/partials/listing_card.html' with listing=listing %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 flex items-center justify-center mb-4 shadow-inner">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <h2 class="font-display font-bold text-xl text-slate-900 dark:text-white">No listings match your search</h2>
+            <p class="text-sm text-slate-500 max-w-md mx-auto mt-1.5">
+                We couldn't find any campus items matching your current filters. Try searching for other terms or be the first to post this item!
+            </p>
+            <div class="mt-6 flex items-center justify-center gap-3">
+                <a href="{% url 'marketplace:listing_list' %}" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    Clear Filters
+                </a>
+                <a href="{% url 'marketplace:listing_create' %}" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md transition">
+                    Post a New Listing
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}My Wishlist / Saved Listings - Campus Marketplace{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-4 space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-500">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                    </svg>
+                </span>
+                <h1 class="font-display font-extrabold text-3xl text-slate-900 dark:text-white">
+                    Saved Listings Wishlist
+                </h1>
+            </div>
+            <p class="text-sm text-slate-500">Items you've bookmarked to keep track of prices, textbooks, and campus deals.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'marketplace:listing_list' %}" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                Browse More Items
+            </a>
+            <a href="{% url 'marketplace:my_listings' %}" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-200 transition">
+                My Posted Items
+            </a>
+        </div>
+    </div>
+
+    <!-- Listings Grid -->
+    {% if saved_items %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for item in saved_items %}
+                {% include 'marketplace/partials/listing_card.html' with listing=item.listing saved_listing_ids=saved_listing_ids %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center mb-4 shadow-inner">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+            </div>
+            <h2 class="font-display font-bold text-xl text-slate-900 dark:text-white">Your wishlist is currently empty</h2>
+            <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1.5">
+                Click the heart icon on any textbook or item card to save it here for quick access later.
+            </p>
+            <div class="mt-6">
+                <a href="{% url 'marketplace:listing_list' %}" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md transition inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span>Explore Marketplace</span>
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

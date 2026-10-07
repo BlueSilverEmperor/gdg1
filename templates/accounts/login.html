@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Log In - Campus Marketplace{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto my-12">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mb-3 shadow-inner">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold font-display text-slate-900 dark:text-white">Welcome Back</h1>
+            <p class="text-sm text-slate-500 mt-1">Sign in with your student campus credentials</p>
+        </div>
+
+        <form method="post" action="{% url 'accounts:login' %}" class="space-y-5" novalidate>
+            {% csrf_token %}
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                <div class="p-3.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.username.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Username
+                </label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.password.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Password
+                </label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold shadow-md shadow-indigo-600/25 transition-all text-sm flex items-center justify-center gap-2">
+                <span>Sign In to Account</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+            </button>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+                New on campus?
+                <a href="{% url 'accounts:register' %}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Create student account
+                </a>
+            </p>
+            <p class="text-xs text-slate-500 dark:text-slate-500">
+                Registered but haven't verified?
+                <a href="{% url 'accounts:verify_otp' %}" class="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Enter your verification code
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

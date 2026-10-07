@@ -1,0 +1,124 @@
+<div class="group flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative {% if listing.is_sold %}opacity-85 ring-1 ring-slate-300 dark:ring-slate-800{% endif %}">
+    <!-- Image Header with Badges & Wishlist -->
+    <div class="relative w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        {% if listing.image %}
+            <img src="{{ listing.image.url }}" 
+                 alt="{{ listing.title }}" 
+                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 {% if listing.is_sold %}grayscale contrast-125{% endif %}">
+        {% else %}
+            <!-- Clean Category Fallback Graphic -->
+            <div class="w-full h-full flex flex-col items-center justify-center p-6 text-slate-400 dark:text-slate-500 bg-gradient-to-tr from-slate-100 to-indigo-50/50 dark:from-slate-900 dark:to-slate-800">
+                {% if listing.category == 'TEXTBOOKS' %}
+                    <svg class="w-14 h-14 text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                {% elif listing.category == 'ELECTRONICS' %}
+                    <svg class="w-14 h-14 text-sky-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                {% elif listing.category == 'LAB_SUPPLIES' %}
+                    <svg class="w-14 h-14 text-emerald-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                {% elif listing.category == 'FURNITURE' %}
+                    <svg class="w-14 h-14 text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                {% else %}
+                    <svg class="w-14 h-14 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                    </svg>
+                {% endif %}
+                <span class="text-xs font-semibold uppercase tracking-wider">{{ listing.get_category_display }}</span>
+            </div>
+        {% endif %}
+
+        <!-- Top Badges Overlay -->
+        <div class="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
+            <div class="flex items-center gap-1.5 pointer-events-auto">
+                <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider backdrop-blur-md bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 shadow-sm">
+                    {{ listing.get_category_display }}
+                </span>
+
+                {% if listing.is_sold %}
+                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-md">
+                        SOLD
+                    </span>
+                {% else %}
+                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider backdrop-blur-md bg-emerald-500/90 text-white shadow-sm">
+                        AVAILABLE
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Single-Click Wishlist Trigger -->
+            <div class="pointer-events-auto">
+                {% if listing.pk in saved_listing_ids %}
+                    {% include 'marketplace/partials/wishlist_btn.html' with listing=listing is_saved=True %}
+                {% else %}
+                    {% include 'marketplace/partials/wishlist_btn.html' with listing=listing is_saved=False %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if listing.is_sold %}
+            <div class="absolute inset-0 bg-slate-950/20 pointer-events-none flex items-center justify-center">
+                <span class="border-2 border-white/80 text-white px-4 py-1.5 rounded-xl font-display font-extrabold text-sm tracking-widest uppercase bg-slate-900/80 backdrop-blur-sm rotate-[-6deg]">
+                    ITEM SOLD
+                </span>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Content Body -->
+    <div class="flex-1 p-5 flex flex-col justify-between">
+        <div>
+            <div class="flex items-baseline justify-between gap-2">
+                <span class="font-display font-black text-2xl text-slate-900 dark:text-white">
+                    ₹{{ listing.price }}
+                </span>
+                <span class="text-[11px] text-slate-400 font-medium">
+                    {{ listing.created_at|timesince }} ago
+                </span>
+            </div>
+
+            <h3 class="font-display font-bold text-base text-slate-900 dark:text-white line-clamp-1 mt-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="focus:outline-none">
+                    {{ listing.title }}
+                </a>
+            </h3>
+
+            <!-- Campus Pickup Location Tag -->
+            <div class="mt-2 flex items-center gap-1.5 text-xs text-indigo-700 dark:text-indigo-300 font-medium bg-indigo-50/80 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/50 truncate">
+                <svg class="w-3.5 h-3.5 shrink-0 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span class="truncate" title="{{ listing.campus_pickup_location }}">{{ listing.campus_pickup_location }}</span>
+            </div>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-2 leading-relaxed">
+                {{ listing.description }}
+            </p>
+        </div>
+
+        <!-- Footer: Seller & CTA -->
+        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center text-[10px]">
+                    {{ listing.seller.username|slice:":1"|upper }}
+                </div>
+                <span class="text-slate-600 dark:text-slate-400 font-medium truncate max-w-[110px]" title="{{ listing.seller.username }}">
+                    {{ listing.seller.username }}
+                </span>
+            </div>
+
+            <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="font-semibold text-xs {% if listing.is_sold %}text-slate-400 hover:text-slate-600{% else %}text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300{% endif %} flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                <span>View Details</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
