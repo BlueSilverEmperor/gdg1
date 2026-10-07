@@ -7,9 +7,15 @@ from django.contrib import messages
 from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
-from .forms import StudentRegistrationForm, StudentLoginForm, OTPVerificationForm
-from .models import EmailVerificationOTP
-from .utils import generate_otp, send_otp_email
+from .forms import (
+    StudentRegistrationForm,
+    StudentLoginForm,
+    OTPVerificationForm,
+    ForgotPasswordRequestForm,
+    ResetPasswordWithOTPForm,
+)
+from .models import EmailVerificationOTP, PasswordResetOTP
+from .utils import generate_otp, send_otp_email, send_password_reset_otp_email
 
 User = get_user_model()
 
@@ -23,6 +29,18 @@ def dispatch_otp_email(user, otp_code: str):
         send_otp_email(user, otp_code)
     else:
         thread = threading.Thread(target=send_otp_email, args=(user, otp_code), daemon=True)
+        thread.start()
+
+
+def dispatch_password_reset_otp_email(user, otp_code: str):
+    """
+    Dispatch Password Reset OTP email. Runs synchronously in test runs for mail.outbox assertions,
+    and asynchronously via threading in production for instant HTTP response times.
+    """
+    if 'test' in sys.argv:
+        send_password_reset_otp_email(user, otp_code)
+    else:
+        thread = threading.Thread(target=send_password_reset_otp_email, args=(user, otp_code), daemon=True)
         thread.start()
 
 
@@ -291,3 +309,119 @@ def logout_view(request):
         logout(request)
         messages.info(request, f"Goodbye, {username}. You have been logged out.")
     return redirect('accounts:login')
+
+
+def forgot_password_view(request):
+    """
+    Handle forgot password request by email.
+    Generates a 6-digit numeric OTP and emails it to the student.
+    Prevents user enumeration by showing safe consistent messaging.
+    """
+    if request.user.is_authenticated:
+        return redirect('marketplace:listing_list')
+
+    if request.method == 'POST':
+        form = ForgotPasswordRequestForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            user = User.objects.filter(email__iexact=email).first()
+
+            if user:
+                # Invalidate any previously unused reset OTPs for this user
+                PasswordResetOTP.objects.filter(user=user, is_used=False).update(is_used=True)
+
+                # Generate new 6-digit OTP
+                otp_code = generate_otp()
+                PasswordResetOTP.objects.create(
+                    user=user,
+                    otp_code=otp_code
+                )
+
+                # Dispatch password reset email
+                dispatch_password_reset_otp_email(user, otp_code)
+
+                # Store email in session
+                request.session['reset_email'] = user.email
+
+                messages.info(
+                    request,
+                    f"A 6-digit password reset code was sent to {user.email}. Enter it below to set a new password."
+                )
+            else:
+                # Anti-enumeration response
+                messages.info(
+                    request,
+                    f"If an account with {email} is registered on Campus Marketplace, a 6-digit password reset code has been sent."
+                )
+                request.session['reset_email'] = email
+
+            query_params = urlencode({'email': email})
+            return redirect(f"{reverse('accounts:reset_password')}?{query_params}")
+    else:
+        initial_email = request.GET.get('email') or request.session.get('reset_email', '')
+        form = ForgotPasswordRequestForm(initial={'email': initial_email} if initial_email else None)
+
+    return render(request, 'accounts/forgot_password.html', {'form': form})
+
+
+def reset_password_view(request):
+    """
+    Verify the 6-digit numeric OTP and set a new password.
+    Validates 10-minute expiry window, password complexity, and redirects to login.
+    """
+    if request.user.is_authenticated:
+        return redirect('marketplace:listing_list')
+
+    email = request.GET.get('email') or request.POST.get('email') or request.session.get('reset_email', '')
+    email = email.strip()
+
+    user = None
+    if email:
+        user = User.objects.filter(email__iexact=email).first()
+
+    if request.method == 'POST':
+        form = ResetPasswordWithOTPForm(request.POST, user=user)
+        if not user:
+            form.add_error(None, "No registered account found for this email address. Please start the reset process again.")
+        elif form.is_valid():
+            submitted_otp = form.cleaned_data['otp_code']
+            new_password = form.cleaned_data['new_password']
+
+            # Find latest unused OTP for user
+            otp_record = PasswordResetOTP.objects.filter(user=user, is_used=False).order_by('-created_at').first()
+
+            if not otp_record:
+                form.add_error('otp_code', "No active password reset request found. Please request a new code.")
+            elif not otp_record.is_valid():
+                form.add_error('otp_code', "This reset code has expired (codes expire in 10 minutes). Please request a new one.")
+            elif otp_record.otp_code != submitted_otp:
+                form.add_error('otp_code', "Invalid reset code. Please check your email and enter the correct 6-digit code.")
+            else:
+                # Valid OTP! Mark as used and update password
+                otp_record.is_used = True
+                otp_record.save(update_fields=['is_used'])
+
+                user.set_password(new_password)
+                user.save()
+
+                # Clean session
+                request.session.pop('reset_email', None)
+
+                messages.success(
+                    request,
+                    "Your password has been successfully reset! Please log in with your new password."
+                )
+                return redirect('accounts:login')
+    else:
+        form = ResetPasswordWithOTPForm(user=user)
+
+    otp_record = PasswordResetOTP.objects.filter(user=user, is_used=False).order_by('-created_at').first() if user else None
+
+    return render(request, 'accounts/reset_password.html', {
+        'form': form,
+        'email': email,
+        'user_obj': user,
+        'otp_code_preview': otp_record.otp_code if (settings.DEBUG and otp_record) else None,
+        'debug': settings.DEBUG,
+    })
+

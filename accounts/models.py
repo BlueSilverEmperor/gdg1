@@ -74,3 +74,35 @@ class EmailVerificationOTP(models.Model):
         remaining = 60 - int(elapsed)
         return max(0, remaining)
 
+
+class PasswordResetOTP(models.Model):
+    """
+    Stores 6-digit numeric OTP for student password reset verification.
+    """
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='password_reset_otps'
+    )
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now=True)
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Password Reset OTP"
+        verbose_name_plural = "Password Reset OTPs"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Reset OTP for {self.user.email} ({self.otp_code})"
+
+    def is_valid(self):
+        """
+        Checks if current time is within 10 minutes of created_at and is_used is False.
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+        if self.is_used:
+            return False
+        return timezone.now() - self.created_at <= timedelta(minutes=10)
+

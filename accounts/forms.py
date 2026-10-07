@@ -2,6 +2,7 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 User = get_user_model()
@@ -176,4 +177,99 @@ class OTPVerificationForm(forms.Form):
         if len(code) != 6:
             raise ValidationError("Please enter a valid 6-digit numeric verification code.")
         return code
+
+
+class ForgotPasswordRequestForm(forms.Form):
+    """
+    Form for requesting a 6-digit password reset OTP by student email.
+    """
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'e.g. rahul@iitb.ac.in or student@campus.edu.in',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'email',
+            'autofocus': 'autofocus',
+            'required': True,
+        }),
+        label="Registered Student Email",
+        help_text="Enter your university or registered campus email address."
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not email:
+            raise ValidationError("Please enter your registered student email.")
+        email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
+        if not re.match(email_pattern, email):
+            raise ValidationError("Please enter a valid email address.")
+        return email
+
+
+class ResetPasswordWithOTPForm(forms.Form):
+    """
+    Form for entering the 6-digit reset OTP and setting a secure new password.
+    """
+    otp_code = forms.CharField(
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            'placeholder': '123456',
+            'class': 'w-full text-center text-3xl font-mono tracking-[0.4em] font-bold py-3.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition',
+            'autofocus': 'autofocus',
+            'autocomplete': 'one-time-code',
+            'inputmode': 'numeric',
+            'maxlength': '6',
+            'required': True,
+        }),
+        label="6-Digit Reset Code",
+        help_text="Enter the 6-digit code sent to your email."
+    )
+    new_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter new password (min 6 characters)',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'new-password',
+            'required': True,
+        }),
+        label="New Password",
+        min_length=6,
+        help_text="Choose a secure password (at least 6 characters)."
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Confirm your new password',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'new-password',
+            'required': True,
+        }),
+        label="Confirm New Password",
+        help_text="Re-type your new password to verify."
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_otp_code(self):
+        raw = self.cleaned_data.get('otp_code', '')
+        code = re.sub(r'\D', '', str(raw).strip())
+        if len(code) != 6:
+            raise ValidationError("Please enter a valid 6-digit numeric reset code.")
+        return code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        if new_password and confirm_password:
+            if new_password != confirm_password:
+                self.add_error('confirm_password', "Passwords do not match. Please re-enter both passwords.")
+            else:
+                try:
+                    validate_password(new_password, user=self.user)
+                except ValidationError as e:
+                    self.add_error('new_password', e)
+
+        return cleaned_data
+
 

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.core import mail
 from django.utils import timezone
-from .models import EmailVerificationOTP
+from .models import EmailVerificationOTP, PasswordResetOTP
 from .utils import generate_otp
 
 User = get_user_model()
@@ -251,3 +251,192 @@ class AccountsAuthenticationTests(TestCase):
             'email',
             'An account with this email address already exists.'
         )
+
+    def test_forgot_password_sends_otp_email_for_existing_user(self):
+        """
+        Submitting an existing user email dispatches a 6-digit reset OTP via email
+        and redirects to reset-password screen.
+        """
+        user = User.objects.create_user(
+            username='reset_student',
+            email='student_reset@campus.ac.in',
+            password='OldPassword123!'
+        )
+        mail.outbox = []
+
+        url = reverse('accounts:forgot_password')
+        response = self.client.post(url, {'email': user.email})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('accounts:reset_password'), response.url)
+        self.assertIn('email=student_reset%40campus.ac.in', response.url)
+
+        # Check OTP record created
+        self.assertTrue(PasswordResetOTP.objects.filter(user=user, is_used=False).exists())
+        otp_record = PasswordResetOTP.objects.get(user=user, is_used=False)
+        self.assertEqual(len(otp_record.otp_code), 6)
+        self.assertTrue(otp_record.is_valid())
+
+        # Check email in mail.outbox
+        self.assertEqual(len(mail.outbox), 1)
+        sent_mail = mail.outbox[0]
+        self.assertEqual(sent_mail.to, [user.email])
+        self.assertIn(otp_record.otp_code, sent_mail.subject)
+        self.assertIn(otp_record.otp_code, sent_mail.body)
+
+    def test_forgot_password_anti_enumeration_defense(self):
+        """
+        Submitting a non-existent email safely redirects without error
+        and does not send an email or reveal that user does not exist.
+        """
+        mail.outbox = []
+        url = reverse('accounts:forgot_password')
+        response = self.client.post(url, {'email': 'ghost_user@campus.ac.in'})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('accounts:reset_password'), response.url)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(PasswordResetOTP.objects.count(), 0)
+
+    def test_reset_password_success_with_valid_otp(self):
+        """
+        Submitting valid OTP and matching new password successfully updates password
+        and invalidates OTP record.
+        """
+        user = User.objects.create_user(
+            username='valid_reset_user',
+            email='valid_reset@campus.ac.in',
+            password='OldPassword123!'
+        )
+        otp_record = PasswordResetOTP.objects.create(
+            user=user,
+            otp_code='543210',
+            is_used=False
+        )
+
+        url = f"{reverse('accounts:reset_password')}?email={user.email}"
+        response = self.client.post(url, {
+            'email': user.email,
+            'otp_code': '543210',
+            'new_password': 'BrandNewPassword123!',
+            'confirm_password': 'BrandNewPassword123!',
+        }, follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        # Should redirect to login
+        self.assertIn('login', response.redirect_chain[0][0])
+
+        # Verify password changed
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('BrandNewPassword123!'))
+        self.assertFalse(user.check_password('OldPassword123!'))
+
+        # Verify OTP marked as used
+        otp_record.refresh_from_db()
+        self.assertTrue(otp_record.is_used)
+
+    def test_reset_password_invalid_otp_rejects(self):
+        """
+        Submitting wrong OTP rejects reset and keeps original password.
+        """
+        user = User.objects.create_user(
+            username='wrong_otp_user',
+            email='wrong_otp@campus.ac.in',
+            password='KeepMyPassword123!'
+        )
+        otp_record = PasswordResetOTP.objects.create(
+            user=user,
+            otp_code='987654',
+            is_used=False
+        )
+
+        url = f"{reverse('accounts:reset_password')}?email={user.email}"
+        response = self.client.post(url, {
+            'email': user.email,
+            'otp_code': '000000',
+            'new_password': 'BrandNewPassword123!',
+            'confirm_password': 'BrandNewPassword123!',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context['form'],
+            'otp_code',
+            'Invalid reset code. Please check your email and enter the correct 6-digit code.'
+        )
+
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('KeepMyPassword123!'))
+        otp_record.refresh_from_db()
+        self.assertFalse(otp_record.is_used)
+
+    def test_reset_password_expired_otp_fails(self):
+        """
+        Submitting an OTP older than 10 minutes fails with expiry error.
+        """
+        user = User.objects.create_user(
+            username='expired_reset_user',
+            email='expired_reset@campus.ac.in',
+            password='OriginalPassword123!'
+        )
+        otp_record = PasswordResetOTP.objects.create(
+            user=user,
+            otp_code='112233',
+            is_used=False
+        )
+        # Fast-forward created_at by 11 minutes
+        PasswordResetOTP.objects.filter(pk=otp_record.pk).update(
+            created_at=timezone.now() - timedelta(minutes=11)
+        )
+
+        url = f"{reverse('accounts:reset_password')}?email={user.email}"
+        response = self.client.post(url, {
+            'email': user.email,
+            'otp_code': '112233',
+            'new_password': 'BrandNewPassword123!',
+            'confirm_password': 'BrandNewPassword123!',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context['form'],
+            'otp_code',
+            'This reset code has expired (codes expire in 10 minutes). Please request a new one.'
+        )
+
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('OriginalPassword123!'))
+
+    def test_reset_password_mismatched_passwords_fails(self):
+        """
+        Submitting differing new_password and confirm_password fails validation.
+        """
+        user = User.objects.create_user(
+            username='mismatch_user',
+            email='mismatch@campus.ac.in',
+            password='InitialPassword123!'
+        )
+        PasswordResetOTP.objects.create(
+            user=user,
+            otp_code='334455',
+            is_used=False
+        )
+
+        url = f"{reverse('accounts:reset_password')}?email={user.email}"
+        response = self.client.post(url, {
+            'email': user.email,
+            'otp_code': '334455',
+            'new_password': 'PasswordOne123!',
+            'confirm_password': 'PasswordTwo123!',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context['form'],
+            'confirm_password',
+            'Passwords do not match. Please re-enter both passwords.'
+        )
+
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('InitialPassword123!'))
+
