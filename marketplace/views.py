@@ -15,6 +15,15 @@ from .services import fetch_book_by_isbn
 User = get_user_model()
 
 
+def health_check(request):
+    """
+    Ultra-lightweight zero-overhead health check endpoint for uptime monitors
+    (e.g., UptimeRobot, cron-job.org) to keep the Render free tier warm.
+    Directly returns HTTP 200 'ok' without database queries, session lookups, or template rendering.
+    """
+    return HttpResponse("ok", content_type="text/plain", status=200)
+
+
 def lookup_isbn_view(request):
     """
     Dedicated API endpoint for looking up textbook details via Open Library API.

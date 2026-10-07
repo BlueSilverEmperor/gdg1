@@ -231,6 +231,36 @@ Alternatively, deploy using Infrastructure-as-Code:
 
 ---
 
+## ⏱️ Deployment & Uptime Monitoring
+
+Render free-tier instances automatically spin down into hibernation after 15 minutes of inactivity, introducing a 50+ second cold start latency on subsequent web visits. To ensure an instantaneous, responsive experience during evaluator grading and student usage, this application exposes an ultra-lightweight, zero-overhead health check endpoint.
+
+### Healthcheck Endpoint Specification
+- **Endpoint Route**: `/health/`
+- **Live URL**: `https://campus-marketplace-fbtp.onrender.com/health/` (or `https://<your-subdomain>.onrender.com/health/`)
+- **HTTP Method**: `GET`
+- **Response**: `200 OK`
+- **Content-Type**: `text/plain`
+- **Payload**: `"ok"`
+- **Zero Overhead Design**:
+  - **No Database I/O**: Completely avoids database connections and queries.
+  - **No Session / Auth Overhead**: Publicly accessible without session middleware lookups, CSRF verification, or authentication guards.
+  - **No Template Engine Parsing**: Emits a raw plain-text HTTP response with sub-millisecond execution time.
+
+### Uptime Monitoring Setup (UptimeRobot / Keep-Alive Ping)
+To prevent Render from sleeping and ensure 100% warm-instance availability:
+
+1. Create a free account at [UptimeRobot](https://uptimerobot.com/) (or use [cron-job.org](https://cron-job.org/)).
+2. Configure a new monitor with the following parameters:
+   - **Monitor Type**: `HTTP(s)`
+   - **Friendly Name**: `Campus Marketplace Render Warmup`
+   - **URL (or IP)**: `https://campus-marketplace-fbtp.onrender.com/health/` *(replace with your deployed URL)*
+   - **Monitoring Interval**: **10–14 minutes** *(Crucial: must be strictly less than Render's 15-minute inactivity timeout. A 10- or 14-minute interval keeps the dyno active 24/7 with minimal traffic)*
+   - **Monitor Timeout**: `30 seconds`
+3. Save the monitor. UptimeRobot will ping `/health/` around the clock, keeping the instance perpetually warm for evaluators.
+
+---
+
 ## 🌐 Environment Variables Reference
 
 | Variable | Required | Description | Example / Default |

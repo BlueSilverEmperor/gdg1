@@ -310,3 +310,29 @@ class MarketplaceListingTests(TestCase):
             self.assertEqual(res_data['authors'], 'Joshua Bloch')
             self.assertEqual(res_data['publication_year'], '2017')
             self.assertEqual(res_data['cover_image_url'], 'https://covers.openlibrary.org/b/id/8231990-L.jpg')
+
+
+class HealthCheckEndpointTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def test_health_check_endpoint(self):
+        """
+        Test that a GET request to /health/ returns 200 OK, response body equals 'ok',
+        and works for anonymous (unauthenticated) users without overhead.
+        """
+        response = self.client.get('/health/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode('utf-8'), 'ok')
+        self.assertEqual(response['Content-Type'], 'text/plain')
+
+    def test_health_check_named_url_resolution(self):
+        """
+        Test reversing the 'health_check' URL name.
+        """
+        url = reverse('health_check')
+        self.assertEqual(url, '/health/')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode('utf-8'), 'ok')
+

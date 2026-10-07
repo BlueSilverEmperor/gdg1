@@ -5,9 +5,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from marketplace.views import lookup_isbn_view
+from marketplace.views import lookup_isbn_view, health_check
 
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('api/lookup-isbn/', lookup_isbn_view, name='root_lookup_isbn'),
