@@ -65,7 +65,7 @@ A production-ready, peer-to-peer campus commerce web application designed specif
 
 ```text
 ├── campus_marketplace/       # Project core configuration
-│   ├── settings.py           # Hardened production settings
+│   ├── settings.py           # Hardened production settings (Render, Whitenoise, S3)
 │   ├── urls.py               # Main URL router
 │   ├── wsgi.py               # WSGI application entry
 │   └── asgi.py               # ASGI application entry
@@ -83,16 +83,19 @@ A production-ready, peer-to-peer campus commerce web application designed specif
 │   ├── views.py              # Discovery, CRUD, HTMX toggle, Wishlist
 │   ├── urls.py               # Marketplace routes & /api/lookup-isbn/
 │   ├── admin.py              # Admin configuration with custom actions
-│   └── tests.py              # Unit & integration test suite (19 tests)
+│   └── tests.py              # Unit & integration test suite (16+ tests)
 ├── templates/                # Responsive HTML5 templates
 │   ├── base.html             # Master layout with Tailwind & HTMX
-│   ├── accounts/             # Login and register pages
+│   ├── accounts/             # Login, register, and OTP verification pages
 │   └── marketplace/          # Feed, detail, wishlist, forms, and partials
-├── static/                   # Static assets
-├── media/                    # Local media uploads directory
+├── static/                   # Static assets (CSS, JS, branding)
+├── media/                    # Local media uploads directory (fallback)
+├── build.sh                  # Render deployment build script (collectstatic + migrate)
+├── render.yaml               # Render Infrastructure-as-Code Blueprint configuration
 ├── Procfile                  # Gunicorn web server process configuration
 ├── requirements.txt          # Production dependencies
-├── runtime.txt               # Python 3.13 runtime specification
+├── .python-version           # Render runtime version specification (Python 3.12.8)
+├── runtime.txt               # Fallback runtime specification
 ├── .env.example              # Environment variables reference template
 ├── TECHNICAL_APPROACH.md     # In-depth architectural documentation
 ├── AI_DECLARATION.md         # Full AI tools & prompts disclosure
@@ -180,26 +183,78 @@ Ran 16 tests in 19.121s — OK (All 16 tests passed)
 
 ---
 
+## ☁️ Production Deployment on Render
+
+This project is pre-configured for automated continuous deployment on [Render](https://render.com).
+
+### Option A: Standard Web Service Setup (Recommended)
+
+1. **Push your code to GitHub**:
+   ```bash
+   git branch -M main
+   git remote add origin https://github.com/<YOUR_USERNAME>/<YOUR_REPO>.git
+   git push -u origin main
+   ```
+2. **Create New Web Service**:
+   - Go to [dashboard.render.com](https://dashboard.render.com/) and click **New + > Web Service**.
+   - Connect your GitHub repository.
+3. **Configure Service Settings**:
+   - **Name**: `campus-marketplace`
+   - **Language**: `Python 3`
+   - **Region**: Closest to your database (e.g. *Singapore* or *Frankfurt*)
+   - **Branch**: `main`
+   - **Build Command**: `./build.sh`
+   - **Start Command**: `gunicorn campus_marketplace.wsgi:application --log-file -`
+   - **Instance Type**: `Free`
+4. **Configure Environment Variables**:
+   Add the following variables in the **Environment** tab:
+   - `PYTHON_VERSION`: `3.12.8`
+   - `DEBUG`: `False`
+   - `SECRET_KEY`: *(Generate or use a strong random string)*
+   - `DATABASE_URL`: `postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres?sslmode=require` (From Supabase)
+   - `SUPABASE_S3_ACCESS_KEY`: *(From Supabase Storage settings)*
+   - `SUPABASE_S3_SECRET_KEY`: *(From Supabase Storage settings)*
+   - `SUPABASE_S3_BUCKET_NAME`: `listing_images`
+   - `SUPABASE_S3_ENDPOINT_URL`: `https://[PROJECT-REF].supabase.co/storage/v1/s3`
+   - `SUPABASE_S3_REGION_NAME`: `ap-southeast-2`
+   - `EMAIL_HOST_USER`: *(Optional: Gmail address for live student OTP verification)*
+   - `EMAIL_HOST_PASSWORD`: *(Optional: 16-character Google App Password)*
+5. **Deploy**:
+   - Click **Deploy Web Service**.
+   - Render automatically executes `build.sh` (`pip install`, `collectstatic`, `migrate`) and starts Gunicorn.
+   - Your live app is available at `https://<service-name>.onrender.com`.
+
+### Option B: Render Blueprint (`render.yaml`)
+Alternatively, deploy using Infrastructure-as-Code:
+1. In the Render Dashboard, select **New + > Blueprint**.
+2. Connect this repository; Render will automatically detect [`render.yaml`](file:///c:/Users/sridh/Desktop/gdg/render.yaml) and configure the build command, start command, and environment variable requirements.
+
+---
+
 ## 🌐 Environment Variables Reference
 
-| Variable | Description | Default / Example |
-|---|---|---|
-| `SECRET_KEY` | Django cryptographic signing key | Unique secret in production |
-| `DEBUG` | Enables/disables debug mode | `True` (Dev) / `False` (Prod) |
-| `ALLOWED_HOSTS` | Comma-separated list of allowed domains | `localhost,127.0.0.1` |
-| `DATABASE_URL` | Supabase PostgreSQL connection URL | `postgresql://postgres:[PASS]@[HOST]:5432/postgres?sslmode=require` |
-| `SUPABASE_S3_ACCESS_KEY` | Supabase Storage S3 Access Key | `your_supabase_s3_access_key` |
-| `SUPABASE_S3_SECRET_KEY` | Supabase Storage S3 Secret Key | `your_supabase_s3_secret_key` |
-| `SUPABASE_S3_BUCKET_NAME` | Supabase Storage S3 Bucket Name | `listing-images` |
-| `SUPABASE_S3_ENDPOINT_URL` | Supabase Storage S3 Endpoint URL | `https://[PROJECT-REF].storage.supabase.co/v1/s3` |
-| `SUPABASE_S3_REGION_NAME` | Supabase Storage S3 Region | `ap-southeast-2` |
-| `CSRF_TRUSTED_ORIGINS` | Trusted origins for CSRF POST requests | `https://your-domain.com` |
-
-
-
+| Variable | Required | Description | Example / Default |
+|---|:---:|---|---|
+| `SECRET_KEY` | Yes | Django cryptographic signing key | Unique 50+ character random secret |
+| `DEBUG` | Yes | Toggles development debug output & toolbar | `False` (Prod) / `True` (Dev) |
+| `ALLOWED_HOSTS` | No | Comma-separated domains allowed to serve requests | `.onrender.com,localhost,127.0.0.1` |
+| `CSRF_TRUSTED_ORIGINS` | No | Origins trusted for CSRF form validation | `https://*.onrender.com` |
+| `DATABASE_URL` | Yes (Prod) | PostgreSQL connection URI (Supabase) | `postgresql://postgres:pass@host:5432/postgres?sslmode=require` |
+| `SUPABASE_S3_ACCESS_KEY` | Optional | Supabase Object Storage S3 Access Key | `211a84...` |
+| `SUPABASE_S3_SECRET_KEY` | Optional | Supabase Object Storage S3 Secret Key | `eb0aa2...` |
+| `SUPABASE_S3_BUCKET_NAME` | Optional | Supabase S3 storage bucket name | `listing_images` |
+| `SUPABASE_S3_ENDPOINT_URL` | Optional | Supabase S3 API endpoint URL | `https://[REF].supabase.co/storage/v1/s3` |
+| `SUPABASE_S3_REGION_NAME` | Optional | Supabase storage region identifier | `ap-southeast-2` |
+| `EMAIL_HOST_USER` | Optional | Gmail address for OTP email dispatch | `your-email@gmail.com` |
+| `EMAIL_HOST_PASSWORD` | Optional | 16-character Google App Password | `abcd efgh ijkl mnop` |
+| `EMAIL_HOST` | Optional | SMTP host for email delivery | `smtp.gmail.com` |
+| `EMAIL_PORT` | Optional | SMTP port | `587` |
+| `EMAIL_USE_TLS` | Optional | TLS encryption toggle | `True` |
 
 ---
 
 ## 📄 Additional Deliverables
 - In-depth architectural blueprint: [`TECHNICAL_APPROACH.md`](file:///c:/Users/sridh/Desktop/gdg/TECHNICAL_APPROACH.md)
 - Complete disclosure of AI tools & prompts: [`AI_DECLARATION.md`](file:///c:/Users/sridh/Desktop/gdg/AI_DECLARATION.md)
+- Render Blueprint Configuration: [`render.yaml`](file:///c:/Users/sridh/Desktop/gdg/render.yaml)
+
