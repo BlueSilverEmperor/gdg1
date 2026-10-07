@@ -288,11 +288,14 @@ def toggle_save_listing(request, listing_id=None, pk=None):
         is_saved = True
         msg = f"Saved '{listing.title}' to your wishlist!"
 
+    total_user_saved = SavedListing.objects.filter(user=request.user).count()
+
     if request.headers.get('HX-Request'):
         return render(request, 'marketplace/partials/wishlist_btn.html', {
             'listing': listing,
             'is_saved': is_saved,
             'favorites_count': listing.favorited_by.count(),
+            'total_user_saved': total_user_saved,
         })
 
     messages.success(request, msg)

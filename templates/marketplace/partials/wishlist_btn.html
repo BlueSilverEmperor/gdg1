@@ -15,6 +15,12 @@
         {% endif %}
         <span>{% if favorites_count is not None %}{{ favorites_count }}{% else %}{{ listing.favorites_count }}{% endif %}</span>
     </button>
+
+    {% if total_user_saved is not None %}
+        <span id="navbar-wishlist-count" hx-swap-oob="true" class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 {% if total_user_saved == 0 %}hidden{% endif %}">
+            {{ total_user_saved }}
+        </span>
+    {% endif %}
 {% else %}
     <a href="{% url 'accounts:login' %}?next={% url 'marketplace:listing_detail' listing.id %}"
        title="Log in to save this item"
