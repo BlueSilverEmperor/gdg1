@@ -13,6 +13,15 @@ class Category(models.TextChoices):
     OTHER = 'OTHER', 'Other'
 
 
+class CampusLocation(models.TextChoices):
+    STUDENT_UNION = 'STUDENT_UNION', 'Student Union'
+    CENTRAL_LIBRARY = 'CENTRAL_LIBRARY', 'Central Library'
+    NORTH_QUAD_DORMS = 'NORTH_QUAD_DORMS', 'North Quad Dorms'
+    SCIENCE_BLOCK = 'SCIENCE_BLOCK', 'Science Block'
+    SPORTS_COMPLEX = 'SPORTS_COMPLEX', 'Sports Complex'
+    MAIN_GATE = 'MAIN_GATE', 'Main Campus Gate'
+
+
 class ListingStatus(models.TextChoices):
     AVAILABLE = 'AVAILABLE', 'Available'
     SOLD = 'SOLD', 'Sold'
@@ -46,6 +55,12 @@ class Listing(models.Model):
         choices=ListingStatus.choices,
         default=ListingStatus.AVAILABLE
     )
+    pickup_location = models.CharField(
+        max_length=40,
+        choices=CampusLocation.choices,
+        default=CampusLocation.STUDENT_UNION,
+        help_text="Designated safe campus meetup spot"
+    )
     campus_pickup_location = models.CharField(
         max_length=150,
         default="Student Union / Campus Library",
@@ -59,14 +74,25 @@ class Listing(models.Model):
         indexes = [
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['category']),
+            models.Index(fields=['pickup_location']),
         ]
 
     def __str__(self):
         return f"{self.title} (₹{self.price:.2f}) - {self.get_status_display()}"
 
+    def save(self, *args, **kwargs):
+        # Synchronize campus_pickup_location text with pickup_location label for display if not explicitly provided
+        if self.pickup_location and not self.campus_pickup_location:
+            self.campus_pickup_location = self.get_pickup_location_display()
+        super().save(*args, **kwargs)
+
     @property
     def is_sold(self):
         return self.status == ListingStatus.SOLD
+
+    @property
+    def favorites_count(self):
+        return self.favorited_by.count()
 
     def get_absolute_url(self):
         return reverse('marketplace:listing_detail', kwargs={'pk': self.pk})
@@ -96,3 +122,37 @@ class SavedListing(models.Model):
 
     def __str__(self):
         return f"{self.user.username} saved {self.listing.title}"
+
+
+class ListingMessage(models.Model):
+    """
+    Direct buyer-seller inquiry messaging between students for a specific listing.
+    """
+    listing = models.ForeignKey(
+        Listing,
+        on_delete=models.CASCADE,
+        related_name='inquiries'
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_inquiries'
+    )
+    receiver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_inquiries'
+    )
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['listing', 'sender', 'receiver']),
+            models.Index(fields=['receiver', 'is_read']),
+        ]
+
+    def __str__(self):
+        return f"Msg from {self.sender.username} to {self.receiver.username} on '{self.listing.title}'"

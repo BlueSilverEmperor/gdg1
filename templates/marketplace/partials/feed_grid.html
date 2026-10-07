@@ -1,0 +1,20 @@
+{% if listings %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for listing in listings %}
+            {% include 'marketplace/partials/listing_card.html' with listing=listing saved_listing_ids=saved_listing_ids %}
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center bg-white/50 dark:bg-slate-900/50">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
+        <h3 class="font-display font-bold text-lg text-slate-900 dark:text-white mb-1">No matching campus listings found</h3>
+        <p class="text-sm text-slate-500 max-w-md mx-auto mb-6">Try clearing filters, searching for a different item or location, or be the first student to post this item!</p>
+        <a href="{% url 'marketplace:listing_list' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition">
+            Clear all filters
+        </a>
+    </div>
+{% endif %}

@@ -1,14 +1,18 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .models import Listing, SavedListing, Category, ListingStatus
+from .models import Listing, SavedListing, ListingMessage, Category, ListingStatus, CampusLocation
 from .forms import ListingForm
 from .services import fetch_book_by_isbn
+
+
+User = get_user_model()
 
 
 def lookup_isbn_view(request):
@@ -29,19 +33,20 @@ def lookup_isbn_view(request):
     return JsonResponse(result, status=status_code)
 
 
-def listing_list(request):
+def _get_filtered_listings(request):
     """
-    Marketplace discovery feed with search, category filtering, status filtering, and sorting.
-    Searches across title, description, and campus_pickup_location.
+    Internal helper to filter listings by search query, category, campus location,
+    and status filter with sorting.
     """
     listings = Listing.objects.select_related('seller').all()
 
-    # Search filter across title, description, and campus_pickup_location
+    # Search filter across title, description, and pickup location
     query = request.GET.get('q', '').strip()
     if query:
         listings = listings.filter(
             Q(title__icontains=query) |
             Q(description__icontains=query) |
+            Q(pickup_location__icontains=query) |
             Q(campus_pickup_location__icontains=query)
         )
 
@@ -50,6 +55,11 @@ def listing_list(request):
     if selected_category and selected_category in Category.values:
         listings = listings.filter(category=selected_category)
 
+    # Campus Pickup Location filter
+    selected_location = request.GET.get('pickup_location', '').strip()
+    if selected_location and selected_location in CampusLocation.values:
+        listings = listings.filter(pickup_location=selected_location)
+
     # Status filter (Available vs Sold vs All)
     status_filter = request.GET.get('status', 'AVAILABLE').strip().upper()
     if status_filter in [ListingStatus.AVAILABLE, ListingStatus.SOLD]:
@@ -57,7 +67,6 @@ def listing_list(request):
     elif status_filter == 'ALL':
         pass  # Show both available and sold
     else:
-        # Default to available for buyers
         status_filter = ListingStatus.AVAILABLE
         listings = listings.filter(status=ListingStatus.AVAILABLE)
 
@@ -71,6 +80,16 @@ def listing_list(request):
         sort_by = 'newest'
         listings = listings.order_by('-created_at')
 
+    return listings, query, selected_category, selected_location, status_filter, sort_by
+
+
+def listing_list(request):
+    """
+    Marketplace discovery feed with search, category filtering,
+    campus pickup location filtering, status filtering, and sorting.
+    """
+    listings, query, selected_category, selected_location, status_filter, sort_by = _get_filtered_listings(request)
+
     # Saved listing IDs for logged-in user
     saved_listing_ids = set()
     if request.user.is_authenticated:
@@ -81,7 +100,9 @@ def listing_list(request):
     context = {
         'listings': listings,
         'categories': Category.choices,
+        'locations': CampusLocation.choices,
         'selected_category': selected_category,
+        'selected_location': selected_location,
         'selected_status': status_filter,
         'sort_by': sort_by,
         'query': query,
@@ -91,10 +112,30 @@ def listing_list(request):
     return render(request, 'marketplace/listing_list.html', context)
 
 
+def feed_items_partial(request):
+    """
+    HTMX endpoint for live polling the marketplace listings grid every 15s.
+    Preserves active search, category, location, and status filters.
+    """
+    listings, query, selected_category, selected_location, status_filter, sort_by = _get_filtered_listings(request)
+
+    saved_listing_ids = set()
+    if request.user.is_authenticated:
+        saved_listing_ids = set(
+            SavedListing.objects.filter(user=request.user).values_list('listing_id', flat=True)
+        )
+
+    context = {
+        'listings': listings,
+        'saved_listing_ids': saved_listing_ids,
+    }
+    return render(request, 'marketplace/partials/feed_grid.html', context)
+
+
 def listing_detail(request, pk):
     """
     Detailed view of a single listing with seller details, timestamps,
-    campus pickup location, large image display, and sold status visual indicators.
+    campus pickup location, large image display, and direct inquiry CTA.
     """
     listing = get_object_or_404(Listing.objects.select_related('seller'), pk=pk)
 
@@ -207,11 +248,9 @@ def listing_toggle_sold(request, pk):
     """
     listing = get_object_or_404(Listing, pk=pk)
 
-    # Security check: strict object-level ownership
     if listing.seller != request.user:
         raise PermissionDenied("You do not have permission to modify this listing's status.")
 
-    # Toggle status
     if listing.status == ListingStatus.AVAILABLE:
         listing.status = ListingStatus.SOLD
         status_msg = "marked as SOLD"
@@ -221,7 +260,6 @@ def listing_toggle_sold(request, pk):
 
     listing.save(update_fields=['status', 'updated_at'])
 
-    # If request was made via HTMX, return updated action fragment or badge
     if request.headers.get('HX-Request'):
         context = {'listing': listing, 'is_owner': True}
         return render(request, 'marketplace/partials/status_toggle_btn.html', context)
@@ -232,11 +270,13 @@ def listing_toggle_sold(request, pk):
 
 @login_required
 @require_POST
-def toggle_wishlist(request, pk):
+def toggle_save_listing(request, listing_id=None, pk=None):
     """
     Single-click HTMX toggle to save or unsave items to the student's Wishlist.
+    Returns partial with updated heart state and favorite count.
     """
-    listing = get_object_or_404(Listing, pk=pk)
+    target_id = listing_id if listing_id is not None else pk
+    listing = get_object_or_404(Listing, pk=target_id)
     saved_item = SavedListing.objects.filter(user=request.user, listing=listing).first()
 
     if saved_item:
@@ -251,17 +291,22 @@ def toggle_wishlist(request, pk):
     if request.headers.get('HX-Request'):
         return render(request, 'marketplace/partials/wishlist_btn.html', {
             'listing': listing,
-            'is_saved': is_saved
+            'is_saved': is_saved,
+            'favorites_count': listing.favorited_by.count(),
         })
 
     messages.success(request, msg)
     return redirect(request.META.get('HTTP_REFERER') or 'marketplace:listing_detail', pk=listing.pk)
 
 
+# Backward-compatible alias
+toggle_wishlist = toggle_save_listing
+
+
 @login_required
-def wishlist_list(request):
+def saved_listings_view(request):
     """
-    Dedicated view displaying all items saved/favorited by the student.
+    Dedicated view displaying all active items saved/favorited by the student.
     """
     saved_items = SavedListing.objects.filter(
         user=request.user
@@ -274,6 +319,10 @@ def wishlist_list(request):
         'saved_listing_ids': saved_listing_ids,
         'total_saved': saved_items.count(),
     })
+
+
+# Backward-compatible alias
+wishlist_list = saved_listings_view
 
 
 @login_required
@@ -304,3 +353,186 @@ def my_listings(request):
         'total_saved': total_saved,
     }
     return render(request, 'marketplace/my_listings.html', context)
+
+
+# ==========================================
+# ITERATION 3 & 4: In-App Inquiry Messaging
+# ==========================================
+
+@login_required
+def inbox_view(request):
+    """
+    Lists all distinct listing conversation threads where request.user is either
+    the sender or the receiver, with unread counters and latest snippet.
+    """
+    messages_qs = ListingMessage.objects.filter(
+        Q(sender=request.user) | Q(receiver=request.user)
+    ).select_related('listing', 'listing__seller', 'sender', 'receiver').order_by('-created_at')
+
+    threads = []
+    seen = set()
+
+    for msg in messages_qs:
+        other_user = msg.receiver if msg.sender == request.user else msg.sender
+        pair_key = (msg.listing_id, other_user.id)
+        if pair_key not in seen:
+            seen.add(pair_key)
+            unread_count = ListingMessage.objects.filter(
+                listing_id=msg.listing_id,
+                sender=other_user,
+                receiver=request.user,
+                is_read=False
+            ).count()
+            threads.append({
+                'listing': msg.listing,
+                'other_user': other_user,
+                'last_message': msg,
+                'unread_count': unread_count,
+            })
+
+    return render(request, 'marketplace/inbox.html', {
+        'threads': threads,
+        'total_threads': len(threads),
+    })
+
+
+@login_required
+def conversation_view(request, listing_id, other_user_id):
+    """
+    Renders direct buyer-seller message thread for a specific listing.
+    Enforces strict authorization: user must be either buyer or seller.
+    Automatically marks incoming messages from other_user as read.
+    """
+    listing = get_object_or_404(Listing.objects.select_related('seller'), pk=listing_id)
+    other_user = get_object_or_404(User, pk=other_user_id)
+
+    # Security check: users cannot message themselves
+    if request.user == other_user:
+        raise PermissionDenied("You cannot start a conversation with yourself.")
+
+    # Security check: user must be either the listing's seller or prospective buyer
+    is_seller_buyer_pair = (
+        (request.user == listing.seller and other_user != listing.seller) or
+        (request.user != listing.seller and other_user == listing.seller)
+    )
+    if not is_seller_buyer_pair:
+        raise PermissionDenied("You do not have permission to access this conversation.")
+
+    # Mark unread messages sent by other_user as read
+    ListingMessage.objects.filter(
+        listing=listing,
+        sender=other_user,
+        receiver=request.user,
+        is_read=False
+    ).update(is_read=True)
+
+    # Fetch ordered conversation history
+    chat_messages = ListingMessage.objects.filter(
+        listing=listing
+    ).filter(
+        (Q(sender=request.user) & Q(receiver=other_user)) |
+        (Q(sender=other_user) & Q(receiver=request.user))
+    ).select_related('sender').order_by('created_at')
+
+    context = {
+        'listing': listing,
+        'other_user': other_user,
+        'chat_messages': chat_messages,
+        'is_seller': (request.user == listing.seller),
+    }
+    return render(request, 'marketplace/conversation.html', context)
+
+
+@login_required
+@require_POST
+def send_inquiry_message(request, listing_id):
+    """
+    Handles new inquiry message submission. Prevents seller from messaging themselves as buyer.
+    Supports both standard POST and HTMX live swapping.
+    """
+    listing = get_object_or_404(Listing.objects.select_related('seller'), pk=listing_id)
+    message_text = request.POST.get('message', '').strip()
+
+    if not message_text:
+        if request.headers.get('HX-Request'):
+            return HttpResponse(status=204)
+        messages.error(request, "Message cannot be empty.")
+        return redirect('marketplace:listing_detail', pk=listing.pk)
+
+    # Determine receiver
+    if request.user == listing.seller:
+        # Seller replying to a buyer
+        receiver_id = request.POST.get('receiver_id')
+        if not receiver_id:
+            raise PermissionDenied("Recipient is required.")
+        receiver = get_object_or_404(User, pk=receiver_id)
+        if receiver == listing.seller:
+            raise PermissionDenied("Cannot send message to yourself.")
+    else:
+        # Buyer inquiring to seller
+        receiver = listing.seller
+        if request.user == listing.seller:
+            raise PermissionDenied("Sellers cannot inquire on their own listings.")
+
+    ListingMessage.objects.create(
+        listing=listing,
+        sender=request.user,
+        receiver=receiver,
+        message=message_text
+    )
+
+    if request.headers.get('HX-Request'):
+        # Return updated messages container partial
+        chat_messages = ListingMessage.objects.filter(
+            listing=listing
+        ).filter(
+            (Q(sender=request.user) & Q(receiver=receiver)) |
+            (Q(sender=receiver) & Q(receiver=request.user))
+        ).select_related('sender').order_by('created_at')
+
+        return render(request, 'marketplace/partials/chat_messages.html', {
+            'chat_messages': chat_messages,
+            'listing': listing,
+            'other_user': receiver,
+        })
+
+    return redirect('marketplace:conversation', listing_id=listing.pk, other_user_id=receiver.pk)
+
+
+@login_required
+def chat_messages_partial(request, listing_id, other_user_id):
+    """
+    HTMX live polling endpoint (every 5s) returning updated message bubbles.
+    Marks incoming messages as read so unread badge stays accurate.
+    """
+    listing = get_object_or_404(Listing.objects.select_related('seller'), pk=listing_id)
+    other_user = get_object_or_404(User, pk=other_user_id)
+
+    # Security check
+    is_seller_buyer_pair = (
+        (request.user == listing.seller and other_user != listing.seller) or
+        (request.user != listing.seller and other_user == listing.seller)
+    )
+    if not is_seller_buyer_pair:
+        raise PermissionDenied("Unauthorized conversation access.")
+
+    # Mark newly polled messages as read
+    ListingMessage.objects.filter(
+        listing=listing,
+        sender=other_user,
+        receiver=request.user,
+        is_read=False
+    ).update(is_read=True)
+
+    chat_messages = ListingMessage.objects.filter(
+        listing=listing
+    ).filter(
+        (Q(sender=request.user) & Q(receiver=other_user)) |
+        (Q(sender=other_user) & Q(receiver=request.user))
+    ).select_related('sender').order_by('created_at')
+
+    return render(request, 'marketplace/partials/chat_messages.html', {
+        'chat_messages': chat_messages,
+        'listing': listing,
+        'other_user': other_user,
+    })

@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 import requests
 from decimal import Decimal
-from .models import Listing, Category, ListingStatus
+from .models import Listing, Category, ListingStatus, CampusLocation
 
 
 class ListingForm(forms.ModelForm):
@@ -28,9 +28,28 @@ class ListingForm(forms.ModelForm):
         widget=forms.HiddenInput(attrs={'id': 'id_remote_cover_url'})
     )
 
+    pickup_location = forms.ChoiceField(
+        choices=CampusLocation.choices,
+        required=False,
+        initial=CampusLocation.STUDENT_UNION,
+        widget=forms.Select(attrs={
+            'id': 'id_pickup_location',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition font-medium',
+        })
+    )
+
+    campus_pickup_location = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'id': 'id_campus_pickup_location',
+            'placeholder': 'e.g. Student Union, North Dorms, Central Library Gate',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+        })
+    )
+
     class Meta:
         model = Listing
-        fields = ['title', 'category', 'price', 'campus_pickup_location', 'description', 'image']
+        fields = ['title', 'category', 'price', 'pickup_location', 'campus_pickup_location', 'description', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
                 'id': 'id_title',
@@ -51,11 +70,14 @@ class ListingForm(forms.ModelForm):
                 'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition font-semibold',
                 'required': True,
             }),
+            'pickup_location': forms.Select(attrs={
+                'id': 'id_pickup_location',
+                'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition font-medium',
+            }),
             'campus_pickup_location': forms.TextInput(attrs={
                 'id': 'id_campus_pickup_location',
                 'placeholder': 'e.g. Student Union, North Dorms, Central Library Gate',
                 'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
-                'required': True,
             }),
             'description': forms.Textarea(attrs={
                 'id': 'id_description',
@@ -94,6 +116,16 @@ class ListingForm(forms.ModelForm):
         if not description:
             raise ValidationError("Please provide a description.")
         return description
+
+    def clean(self):
+        cleaned_data = super().clean()
+        loc = cleaned_data.get('pickup_location')
+        campus_loc = cleaned_data.get('campus_pickup_location')
+        if not loc:
+            cleaned_data['pickup_location'] = 'STUDENT_UNION'
+        if not campus_loc:
+            cleaned_data['campus_pickup_location'] = "Student Union"
+        return cleaned_data
 
     def save(self, commit=True):
         listing = super().save(commit=False)

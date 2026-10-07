@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat with {{ other_user.username }} - {{ listing.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-2 space-y-4">
+    <!-- Back to Inbox navigation & Item Header Banner -->
+    <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <!-- Left: Counterparty & Listing info -->
+            <div class="flex items-center gap-3.5">
+                <a href="{% url 'marketplace:inbox' %}" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Back to Inbox">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-sky-500 text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
+                    {{ other_user.username|slice:":1"|upper }}
+                </div>
+
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display font-bold text-base text-slate-900 dark:text-white truncate">
+                            {{ other_user.username }}
+                        </h1>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold {% if is_seller %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% else %}bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300{% endif %}">
+                            {% if is_seller %}Buyer{% else %}Seller{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 truncate">{{ other_user.campus_name|default:"Verified Student" }}</p>
+                </div>
+            </div>
+
+            <!-- Right: Listing snapshot card -->
+            <div class="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 sm:max-w-xs w-full">
+                <div class="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                    {% if listing.image %}
+                        <img src="{{ listing.image.url }}" alt="{{ listing.title }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
+                            {{ listing.get_category_display|slice:":3" }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <a href="{% url 'marketplace:listing_detail' listing.id %}" class="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-indigo-600 transition" title="{{ listing.title }}">
+                        {{ listing.title }}
+                    </a>
+                    <div class="flex items-center justify-between gap-1 mt-0.5">
+                        <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">₹{{ listing.price }}</span>
+                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">📍 {{ listing.get_pickup_location_display }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Messages Card with Live HTMX Polling (5s) -->
+    <div class="bg-slate-50/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 shadow-sm flex flex-col h-[520px]">
+        <!-- Live Status Bar -->
+        <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200/60 dark:border-slate-800/60 text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Live Chat Active (auto-updates every 5s)</span>
+            </div>
+            <span>Meet safely at: <strong class="text-emerald-600 dark:text-emerald-400">📍 {{ listing.get_pickup_location_display }}</strong></span>
+        </div>
+
+        <!-- Scrollable Messages Container with HTMX Polling -->
+        <div id="chat-messages-container"
+             class="flex-1 overflow-y-auto pr-2 space-y-4"
+             hx-get="{% url 'marketplace:chat_messages_partial' listing.id other_user.id %}"
+             hx-trigger="every 5s"
+             hx-swap="innerHTML">
+            {% include 'marketplace/partials/chat_messages.html' with chat_messages=chat_messages listing=listing other_user=other_user %}
+        </div>
+
+        <!-- Chat Input Form -->
+        <form method="post"
+              action="{% url 'marketplace:send_message' listing.id %}"
+              hx-post="{% url 'marketplace:send_message' listing.id %}"
+              hx-target="#chat-messages-container"
+              hx-swap="innerHTML"
+              hx-on::after-request="this.reset(); scrollChatToBottom();"
+              class="pt-3 mt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center gap-2">
+            {% csrf_token %}
+            {% if is_seller %}
+                <input type="hidden" name="receiver_id" value="{{ other_user.id }}">
+            {% endif %}
+
+            <input type="text"
+                   name="message"
+                   id="chat-message-input"
+                   placeholder="Type an inquiry or suggest a meetup time..."
+                   required
+                   autocomplete="off"
+                   class="flex-1 px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+
+            <button type="submit"
+                    class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition flex items-center gap-2 shrink-0">
+                <span>Send</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function scrollChatToBottom() {
+        const container = document.getElementById('chat-messages-container');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+    // Auto scroll on initial page load
+    document.addEventListener('DOMContentLoaded', scrollChatToBottom);
+    // Auto scroll when HTMX updates chat
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'chat-messages-container') {
+            scrollChatToBottom();
+        }
+    });
+</script>
+{% endblock %}
