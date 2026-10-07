@@ -2,7 +2,7 @@
 
 A production-ready, peer-to-peer campus commerce web application designed specifically for college students. Students can buy and sell textbooks, lab supplies, electronics, dorm furniture, and campus gear safely and locally with verified student accounts, Open Library ISBN auto-filling, campus pickup spot tags, saved wishlists, and instant HTMX inventory status toggles.
 
-🌐 **Live Production URL Placeholder**: `https://campus-marketplace-demo.onrender.com`
+🌐 **Live Production URL**: [https://campus-marketplace-fbtp.onrender.com](https://campus-marketplace-fbtp.onrender.com)
 
 ---
 
