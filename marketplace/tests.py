@@ -5,7 +5,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from marketplace.models import Listing, SavedListing, Category, ListingStatus
-from marketplace.forms import ListingForm
+from marketplace.forms import ListingForm, StudentRegistrationForm
 from marketplace.services import sanitize_isbn, fetch_book_by_isbn
 
 User = get_user_model()
@@ -433,4 +433,104 @@ class ListingFilterTests(TestCase):
             })
             self.assertEqual(res.status_code, 302)
             self.assertTrue(Listing.objects.filter(title=f'Item in {cat}', category=cat).exists())
+
+
+class StudentRegistrationTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def test_registration_with_valid_edu_email_authenticates_immediately(self):
+        """
+        Valid .edu email registers user, securely hashes password, creates active user,
+        redirects, and immediately authenticates in session.
+        """
+        data = {
+            'username': 'rahul_edu',
+            'email': 'rahul@stanford.edu',
+            'first_name': 'Rahul',
+            'last_name': 'Sharma',
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+        }
+        response = self.client.post(reverse('marketplace:register'), data)
+        self.assertEqual(response.status_code, 302)
+
+        # User is in database and active
+        self.assertTrue(User.objects.filter(username='rahul_edu').exists())
+        user = User.objects.get(username='rahul_edu')
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.check_password('SecurePassword123!'))
+
+        # User is immediately authenticated in session
+        feed_response = self.client.get(reverse('marketplace:listing_list'))
+        self.assertTrue(feed_response.context['user'].is_authenticated)
+        self.assertEqual(feed_response.context['user'].username, 'rahul_edu')
+
+    def test_registration_with_valid_acin_email_authenticates_immediately(self):
+        """
+        Valid .ac.in email registers user directly with zero latency.
+        """
+        data = {
+            'username': 'priya_iit',
+            'email': 'priya@iitb.ac.in',
+            'first_name': 'Priya',
+            'last_name': 'Verma',
+            'password': 'PriyaStrongPass456!',
+            'confirm_password': 'PriyaStrongPass456!',
+        }
+        response = self.client.post(reverse('marketplace:register'), data)
+        self.assertEqual(response.status_code, 302)
+
+        self.assertTrue(User.objects.filter(username='priya_iit').exists())
+        user = User.objects.get(username='priya_iit')
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.check_password('PriyaStrongPass456!'))
+
+    def test_registration_rejects_non_campus_email(self):
+        """
+        Submitting non-campus email (e.g. user@gmail.com, user@yahoo.com)
+        raises a validation error and prevents user creation.
+        """
+        invalid_emails = ['hacker@gmail.com', 'scammer@yahoo.com', 'test@hotmail.com']
+        for email in invalid_emails:
+            data = {
+                'username': f'user_{email.split("@")[0]}',
+                'email': email,
+                'password': 'ValidPassword123!',
+                'confirm_password': 'ValidPassword123!',
+            }
+            response = self.client.post(reverse('marketplace:register'), data)
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(User.objects.filter(email=email).exists())
+            self.assertIn('email', response.context['form'].errors)
+            self.assertIn(
+                "Registration requires a recognized college/university email address (.edu or .ac.in).",
+                response.context['form'].errors['email']
+            )
+
+    def test_registration_rejects_mismatched_or_short_passwords(self):
+        """
+        Rejects mismatched passwords or passwords under 8 characters.
+        """
+        # Mismatch
+        data_mismatch = {
+            'username': 'mismatch_user',
+            'email': 'mismatch@college.edu',
+            'password': 'Password12345!',
+            'confirm_password': 'DifferentPassword!',
+        }
+        res1 = self.client.post(reverse('marketplace:register'), data_mismatch)
+        self.assertEqual(res1.status_code, 200)
+        self.assertFalse(User.objects.filter(username='mismatch_user').exists())
+
+        # Short password (< 8 chars)
+        data_short = {
+            'username': 'short_user',
+            'email': 'short@college.edu',
+            'password': 'short',
+            'confirm_password': 'short',
+        }
+        res2 = self.client.post(reverse('marketplace:register'), data_short)
+        self.assertEqual(res2.status_code, 200)
+        self.assertFalse(User.objects.filter(username='short_user').exists())
 

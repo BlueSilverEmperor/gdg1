@@ -3,8 +3,8 @@
 {% block title %}Register Student Account - Campus Marketplace{% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto my-10">
-    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-8">
+<div class="max-w-xl mx-auto my-10 px-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8">
         <!-- Header -->
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mb-3 shadow-inner">
@@ -13,7 +13,7 @@
                 </svg>
             </div>
             <h1 class="text-2xl font-bold font-display text-slate-900 dark:text-white">Join Campus Marketplace</h1>
-            <p class="text-sm text-slate-500 mt-1">Register using your verified student email address</p>
+            <p class="text-sm text-slate-500 mt-1">Instant registration for verified college students (.edu &amp; .ac.in)</p>
         </div>
 
         <form method="post" action="{% url 'accounts:register' %}" class="space-y-4" novalidate>
@@ -30,7 +30,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label for="{{ form.username.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Username *
+                        Student Username *
                     </label>
                     {{ form.username }}
                     {% if form.username.errors %}
@@ -40,7 +40,7 @@
 
                 <div>
                     <label for="{{ form.email.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Campus Email *
+                        Campus Email (.edu / .ac.in) *
                     </label>
                     {{ form.email }}
                     {% if form.email.errors %}
@@ -51,8 +51,30 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                    <label for="{{ form.first_name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        First Name
+                    </label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.last_name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Last Name
+                    </label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                     <label for="{{ form.campus_name.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Campus / College
+                        College / Campus
                     </label>
                     {{ form.campus_name }}
                     {% if form.campus_name.errors %}
@@ -62,7 +84,7 @@
 
                 <div>
                     <label for="{{ form.phone_number.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Mobile (+91, 10 Digits)
+                        Mobile (Optional)
                     </label>
                     {{ form.phone_number }}
                     {% if form.phone_number.errors %}
@@ -74,7 +96,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label for="{{ form.password.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                        Password *
+                        Password (Min 8 chars) *
                     </label>
                     {{ form.password }}
                     {% if form.password.errors %}
@@ -83,19 +105,19 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.password_confirm.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label for="{{ form.confirm_password.id_for_label }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                         Confirm Password *
                     </label>
-                    {{ form.password_confirm }}
-                    {% if form.password_confirm.errors %}
-                        <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.password_confirm.errors.0 }}</p>
+                    {{ form.confirm_password }}
+                    {% if form.confirm_password.errors %}
+                        <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.confirm_password.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>
 
             <div class="pt-2">
-                <button type="submit" id="registerBtn" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold shadow-md shadow-indigo-600/25 transition-all text-sm flex items-center justify-center gap-2">
-                    <span>Create Student Account</span>
+                <button type="submit" id="registerBtn" class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold shadow-md shadow-indigo-600/25 transition-all text-sm flex items-center justify-center gap-2">
+                    <span>Create Account &amp; Sign In</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                     </svg>
@@ -105,15 +127,9 @@
 
         <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
             <p class="text-sm text-slate-600 dark:text-slate-400">
-                Already registered?
+                Already have an account?
                 <a href="{% url 'accounts:login' %}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
                     Log in here
-                </a>
-            </p>
-            <p class="text-xs text-slate-500 dark:text-slate-500">
-                Already have an OTP code waiting?
-                <a href="{% url 'accounts:verify_otp' %}" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Verify email here
                 </a>
             </p>
         </div>
@@ -131,7 +147,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
-                <span>Creating Account & Sending OTP...</span>
+                <span>Creating Account...</span>
             `;
         });
     }

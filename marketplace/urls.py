@@ -6,6 +6,7 @@ app_name = 'marketplace'
 urlpatterns = [
     # Core Marketplace Catalog
     path('', views.listing_list, name='listing_list'),
+    path('register/', views.register_view, name='register'),
     path('feed-partial/', views.feed_items_partial, name='feed_partial'),
     path('create/', views.listing_create, name='listing_create'),
     path('my-listings/', views.my_listings, name='my_listings'),
