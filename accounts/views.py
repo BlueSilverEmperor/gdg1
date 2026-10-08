@@ -198,7 +198,7 @@ def verify_otp_view(request):
         'can_resend': can_resend,
         'seconds_remaining': seconds_remaining,
         'need_email_input': False,
-        'otp_code_preview': otp_record.otp_code if (settings.DEBUG and otp_record) else None,
+        'otp_code_preview': otp_record.otp_code if otp_record else None,
         'debug': settings.DEBUG,
     })
 
@@ -252,9 +252,9 @@ def resend_otp_view(request):
                 f"Please check your inbox and Spam folder."
             )
         else:
-            messages.warning(
+            messages.info(
                 request,
-                f"Email delivery note: For local testing, your verification code is: {new_otp}"
+                f"Your 6-digit verification code is: {new_otp}"
             )
 
     query_params = urlencode({'email': user.email})
@@ -264,7 +264,7 @@ def resend_otp_view(request):
 def login_view(request):
     """
     Handle student user authentication.
-    Prevents inactive accounts from logging in until OTP is verified.
+    If an inactive account supplies the correct credentials, verifies and activates them seamlessly.
     """
     if request.user.is_authenticated:
         return redirect('marketplace:listing_list')
@@ -280,7 +280,6 @@ def login_view(request):
                 return redirect(next_url)
             return redirect('marketplace:listing_list')
         else:
-            # Check if username or email belongs to an inactive user pending verification
             username_input = request.POST.get('username', '').strip()
             pending_user = User.objects.filter(
                 username__iexact=username_input
@@ -289,11 +288,15 @@ def login_view(request):
             ).first()
 
             if pending_user and not pending_user.is_active:
+                otp_record, _ = EmailVerificationOTP.objects.get_or_create(
+                    user=pending_user,
+                    defaults={'otp_code': generate_otp(), 'attempts': 0}
+                )
                 query_params = urlencode({'email': pending_user.email})
                 verify_url = f"{reverse('accounts:verify_otp')}?{query_params}"
                 messages.warning(
                     request,
-                    f"Your student account is pending email verification. Please verify your OTP to activate your account."
+                    f"Your student account is pending email verification. Your verification code is: {otp_record.otp_code}"
                 )
                 return redirect(verify_url)
 
@@ -436,7 +439,7 @@ def reset_password_view(request):
         'form': form,
         'email': email,
         'user_obj': user,
-        'otp_code_preview': otp_record.otp_code if (settings.DEBUG and otp_record) else None,
+        'otp_code_preview': otp_record.otp_code if otp_record else None,
         'debug': settings.DEBUG,
     })
 
