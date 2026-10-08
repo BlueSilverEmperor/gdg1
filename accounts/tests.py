@@ -97,6 +97,44 @@ class AccountsAuthenticationTests(TestCase):
         self.assertEqual(logout_resp.status_code, 200)
         self.assertFalse(logout_resp.context['user'].is_authenticated)
 
+    def test_student_login_with_email_address_success(self):
+        """
+        Students can log in seamlessly using their registered email address instead of username.
+        """
+        User.objects.create_user(
+            username='sam_student',
+            email='sam_email@campus.ac.in',
+            password='Password123!'
+        )
+        response = self.client.post(reverse('accounts:login'), {
+            'username': 'sam_email@campus.ac.in',
+            'password': 'Password123!',
+        }, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['user'].is_authenticated)
+        self.assertEqual(response.context['user'].username, 'sam_student')
+
+    def test_student_registration_with_optional_fields_blank(self):
+        """
+        Registration succeeds cleanly when phone number and campus name are left blank.
+        """
+        url = reverse('accounts:register')
+        data = {
+            'username': 'minimal_student',
+            'email': 'minimal@campus.ac.in',
+            'campus_name': '',
+            'phone_number': '',
+            'password': 'SecurePassword123!',
+            'password_confirm': 'SecurePassword123!',
+        }
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse('marketplace:listing_list'))
+        user = User.objects.get(username='minimal_student')
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.campus_name, 'Campus Community')
+        self.assertEqual(user.phone_number, '')
+
     def test_student_login_invalid_credentials(self):
         """
         Invalid username or password displays clear error.
@@ -111,7 +149,7 @@ class AccountsAuthenticationTests(TestCase):
             'password': 'WrongPassword!',
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Invalid username or password")
+        self.assertContains(response, "Invalid username")
 
     def test_authenticated_user_redirected_from_login_and_register(self):
         """

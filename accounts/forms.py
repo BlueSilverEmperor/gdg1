@@ -1,9 +1,10 @@
 import re
 from django import forms
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 User = get_user_model()
 
@@ -45,20 +46,28 @@ class StudentRegistrationForm(forms.ModelForm):
                 'required': True,
             }),
             'email': forms.EmailInput(attrs={
-                'placeholder': 'e.g. rahul@iitb.ac.in or student@campus.edu.in',
+                'placeholder': 'e.g. rahul@iitb.ac.in or student@campus.edu',
                 'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
                 'autocomplete': 'email',
                 'required': True,
             }),
             'campus_name': forms.TextInput(attrs={
-                'placeholder': 'e.g. IIT Delhi, BITS Pilani, DU North Campus',
+                'placeholder': 'e.g. IIT Delhi, BITS Pilani, DU North Campus (Optional)',
                 'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             }),
             'phone_number': forms.TextInput(attrs={
-                'placeholder': 'e.g. +91 98765 43210 (10 digits)',
+                'placeholder': 'e.g. 9876543210 (Optional)',
                 'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             }),
         }
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '').strip()
+        if not username:
+            raise ValidationError("Please choose a username.")
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("This username is already taken. Please choose another username.")
+        return username
 
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number', '').strip()
@@ -85,9 +94,9 @@ class StudentRegistrationForm(forms.ModelForm):
         if not email:
             raise ValidationError("A valid campus email is required.")
 
-        email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
-        match = re.match(email_pattern, email)
-        if not match:
+        try:
+            validate_email(email)
+        except ValidationError:
             raise ValidationError("Please enter a valid email address.")
 
         if User.objects.filter(email__iexact=email).exists():
@@ -108,6 +117,8 @@ class StudentRegistrationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])
+        if not user.campus_name or not user.campus_name.strip():
+            user.campus_name = "Campus Community"
         user.is_active = True
         user.is_verified = True
         if commit:
@@ -118,14 +129,16 @@ class StudentRegistrationForm(forms.ModelForm):
 class StudentLoginForm(AuthenticationForm):
     """
     Styled login form with Tailwind classes.
+    Supports login with either Username OR Email address seamlessly.
     """
     username = forms.CharField(
         widget=forms.TextInput(attrs={
-            'placeholder': 'Enter your username or email',
+            'placeholder': 'Enter username or registered email',
             'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             'autocomplete': 'username',
             'required': True,
-        })
+        }),
+        label="Username or Email"
     )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
@@ -135,6 +148,34 @@ class StudentLoginForm(AuthenticationForm):
             'required': True,
         })
     )
+
+    def clean(self):
+        username = self.cleaned_data.get('username')
+        password = self.cleaned_data.get('password')
+
+        if username is not None and password:
+            clean_username = username.strip()
+            # Allow login by either email or username (case-insensitive lookup)
+            user_candidate = User.objects.filter(email__iexact=clean_username).first()
+            if not user_candidate:
+                user_candidate = User.objects.filter(username__iexact=clean_username).first()
+
+            auth_username = user_candidate.username if user_candidate else clean_username
+
+            self.user_cache = authenticate(
+                self.request,
+                username=auth_username,
+                password=password,
+            )
+            if self.user_cache is None:
+                raise forms.ValidationError(
+                    "Invalid username/email or password. Please check your credentials.",
+                    code='invalid_login'
+                )
+            else:
+                self.confirm_login_allowed(self.user_cache)
+
+        return self.cleaned_data
 
 
 class ForgotPasswordRequestForm(forms.Form):
@@ -157,8 +198,9 @@ class ForgotPasswordRequestForm(forms.Form):
         email = self.cleaned_data.get('email', '').strip().lower()
         if not email:
             raise ValidationError("Please enter your registered student email.")
-        email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
-        if not re.match(email_pattern, email):
+        try:
+            validate_email(email)
+        except ValidationError:
             raise ValidationError("Please enter a valid email address.")
         return email
 
