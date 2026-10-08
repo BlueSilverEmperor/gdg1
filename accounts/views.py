@@ -57,12 +57,15 @@ def register_view(request):
                     user=inactive_user,
                     defaults={'otp_code': otp_code, 'attempts': 0}
                 )
-                dispatch_otp_email(inactive_user, otp_code)
+                sent = dispatch_otp_email(inactive_user, otp_code)
                 request.session['verify_email'] = inactive_user.email
-                messages.info(
-                    request,
-                    f"Your account was already created and is pending verification. A fresh 6-digit code was sent to {inactive_user.email}."
-                )
+                if settings.DEBUG:
+                    msg = f"Your account is pending verification. A 6-digit code was sent to {inactive_user.email}. (Verification Code: {otp_code})"
+                elif sent:
+                    msg = f"Your account was already created and is pending verification. A fresh 6-digit code was sent to {inactive_user.email}. Please check your inbox and Spam folder."
+                else:
+                    msg = f"Your account is pending verification. For testing, your verification code is: {otp_code}"
+                messages.info(request, msg)
                 query_params = urlencode({'email': inactive_user.email})
                 return redirect(f"{reverse('accounts:verify_otp')}?{query_params}")
 
@@ -84,17 +87,14 @@ def register_view(request):
             # Store email in session for convenient fallback
             request.session['verify_email'] = user.email
 
-            if sent:
-                messages.info(
-                    request,
-                    f"A 6-digit verification code was sent to {user.email}. "
-                    f"If you don't see it, check your Spam / Promotions folder."
-                )
+            if settings.DEBUG:
+                msg = f"A 6-digit verification code was sent to {user.email}. (Verification Code: {otp_code})"
+            elif sent:
+                msg = f"A 6-digit verification code was sent to {user.email}. Please check your inbox and Spam / Promotions folder."
             else:
-                messages.warning(
-                    request,
-                    f"Email delivery note: For local testing, your verification code is: {otp_code}"
-                )
+                msg = f"Email delivery note: For testing, your verification code is: {otp_code}"
+            
+            messages.info(request, msg)
             query_params = urlencode({'email': user.email})
             return redirect(f"{reverse('accounts:verify_otp')}?{query_params}")
         else:
@@ -122,12 +122,14 @@ def verify_otp_view(request):
         user = User.objects.filter(email__iexact=email).first()
 
     if not user:
-        # If user landed directly on verify without email, give them an email input form
-        if request.method == 'POST' and not email:
-            messages.error(request, "Please enter your registered student email.")
+        if request.method == 'POST':
+            if email:
+                messages.error(request, f"No pending student account found for '{email}'. Please register first.")
+            else:
+                messages.error(request, "Please enter your registered student email address.")
         return render(request, 'accounts/verify_otp.html', {
-            'form': OTPVerificationForm(),
-            'email': '',
+            'form': OTPVerificationForm(request.POST if request.method == 'POST' else None),
+            'email': email,
             'user_obj': None,
             'need_email_input': True,
             'can_resend': False,
