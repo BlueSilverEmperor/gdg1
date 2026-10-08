@@ -43,9 +43,12 @@
                         Campus Email *
                     </label>
                     {{ form.email }}
-                    {% if form.email.errors %}
-                        <p class="text-xs text-rose-600 mt-1 font-medium">{{ form.email.errors.0 }}</p>
-                    {% endif %}
+                    <p id="email-error-msg" class="text-xs text-rose-600 dark:text-rose-400 mt-1.5 font-medium {% if not form.email.errors %}hidden{% endif %}">
+                        {% if form.email.errors %}{{ form.email.errors.0 }}{% endif %}
+                    </p>
+                    <p id="email-hint" class="text-[11px] text-slate-400 dark:text-slate-500 mt-1 {% if form.email.errors %}hidden{% endif %}">
+                        Must be your campus email (e.g. rahul@iitb.ac.in or student@campus.edu)
+                    </p>
                 </div>
             </div>
 
@@ -119,8 +122,77 @@
 <script>
     const regForm = document.querySelector('form');
     const regBtn = document.getElementById('registerBtn');
+    const emailInput = document.getElementById('{{ form.email.id_for_label }}') || document.querySelector('input[name="email"]');
+    const emailErrorMsg = document.getElementById('email-error-msg');
+    const emailHint = document.getElementById('email-hint');
+
+    // Matches campus email format (.edu, .ac.*, .edu.*, .ernet.in, .res.in, .college, .university)
+    const campusEmailRegex = /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+(?:edu|ac\.[a-zA-Z]{2,}|edu\.[a-zA-Z]{2,}|ernet\.in|res\.in|college|university)$/i;
+
+    function validateEmailInput(showIfEmpty = false) {
+        if (!emailInput || !emailErrorMsg) return true;
+        const val = emailInput.value.trim();
+        
+        if (!val) {
+            if (showIfEmpty) {
+                showEmailError("Campus email is required.");
+                return false;
+            } else {
+                clearEmailError();
+                return true;
+            }
+        }
+
+        if (!campusEmailRegex.test(val)) {
+            showEmailError("Please enter a valid campus email address in the requested format (e.g. rahul@iitb.ac.in or student@campus.edu).");
+            return false;
+        }
+
+        clearEmailError();
+        return true;
+    }
+
+    function showEmailError(msg) {
+        if (!emailErrorMsg || !emailInput) return;
+        emailErrorMsg.textContent = msg;
+        emailErrorMsg.classList.remove('hidden');
+        if (emailHint) emailHint.classList.add('hidden');
+        emailInput.classList.remove('border-slate-300', 'dark:border-slate-700', 'focus:ring-indigo-500');
+        emailInput.classList.add('border-rose-500', 'focus:ring-rose-500', 'dark:border-rose-500');
+    }
+
+    function clearEmailError() {
+        if (!emailErrorMsg || !emailInput) return;
+        emailErrorMsg.textContent = '';
+        emailErrorMsg.classList.add('hidden');
+        if (emailHint) emailHint.classList.remove('hidden');
+        emailInput.classList.remove('border-rose-500', 'focus:ring-rose-500', 'dark:border-rose-500');
+        emailInput.classList.add('border-slate-300', 'dark:border-slate-700', 'focus:ring-indigo-500');
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            if (emailInput.value.trim()) {
+                validateEmailInput(true);
+            }
+        });
+
+        emailInput.addEventListener('input', function() {
+            if (!emailErrorMsg.classList.contains('hidden')) {
+                validateEmailInput(false);
+            }
+        });
+    }
+
     if (regForm && regBtn) {
-        regForm.addEventListener('submit', function() {
+        regForm.addEventListener('submit', function(e) {
+            const isEmailValid = validateEmailInput(true);
+            if (!isEmailValid) {
+                e.preventDefault();
+                emailInput.focus();
+                return false;
+            }
+
             regBtn.disabled = true;
             regBtn.innerHTML = `
                 <svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">

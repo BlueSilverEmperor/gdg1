@@ -99,6 +99,12 @@ class StudentRegistrationForm(forms.ModelForm):
         except ValidationError:
             raise ValidationError("Please enter a valid email address.")
 
+        campus_email_pattern = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+(?:edu|ac\.[a-zA-Z]{2,}|edu\.[a-zA-Z]{2,}|ernet\.in|res\.in|college|university)$'
+        if not re.match(campus_email_pattern, email):
+            raise ValidationError(
+                "Please enter a valid campus email address in the requested format (e.g. rahul@iitb.ac.in or student@campus.edu)."
+            )
+
         if User.objects.filter(email__iexact=email).exists():
             raise ValidationError("An account with this email address already exists.")
 
@@ -202,6 +208,13 @@ class ForgotPasswordRequestForm(forms.Form):
             validate_email(email)
         except ValidationError:
             raise ValidationError("Please enter a valid email address.")
+
+        campus_email_pattern = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+(?:edu|ac\.[a-zA-Z]{2,}|edu\.[a-zA-Z]{2,}|ernet\.in|res\.in|college|university)$'
+        if not re.match(campus_email_pattern, email):
+            raise ValidationError(
+                "Please enter a valid campus email address in the requested format (e.g. rahul@iitb.ac.in or student@campus.edu)."
+            )
+
         return email
 
 

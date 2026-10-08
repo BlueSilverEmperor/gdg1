@@ -75,6 +75,37 @@ class AccountsAuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context['form'], 'email', "An account with this email address already exists.")
 
+    def test_invalid_email_format_registration_rejected(self):
+        """
+        Non-campus emails (e.g. gmail, yahoo, invalid format) are rejected with format error.
+        """
+        url = reverse('accounts:register')
+        for bad_email in ['student@gmail.com', 'user@yahoo.co.in', 'not-an-email', 'person@company.org']:
+            data = {
+                'username': f'test_user_{bad_email[:4]}',
+                'email': bad_email,
+                'password': 'Password123!',
+                'password_confirm': 'Password123!',
+            }
+            response = self.client.post(url, data)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context['form'].errors.get('email'))
+
+    def test_valid_campus_email_formats_accepted(self):
+        """
+        Valid campus email formats (.ac.in, .edu, .edu.in, etc.) pass form validation.
+        """
+        from accounts.forms import StudentRegistrationForm
+        for valid_email in ['rahul@iitb.ac.in', 'student@campus.edu', 'sam@du.edu.in', 'user@ox.ac.uk']:
+            form = StudentRegistrationForm(data={
+                'username': f'valid_{valid_email[:4]}',
+                'email': valid_email,
+                'password': 'Password123!',
+                'password_confirm': 'Password123!',
+            })
+            form.is_valid()
+            self.assertNotIn('email', form.errors)
+
     def test_student_login_success_and_logout(self):
         """
         Students can log in with valid credentials and log out smoothly.
