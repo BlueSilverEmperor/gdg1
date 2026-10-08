@@ -8,6 +8,7 @@ workers = 2
 threads = 4
 worker_class = "gthread"
 timeout = 60
+forwarded_allow_ips = "*"
 accesslog = "-"
 errorlog = "-"
 loglevel = "info"
