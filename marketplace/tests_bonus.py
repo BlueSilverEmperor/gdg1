@@ -52,7 +52,7 @@ class BonusFeaturesTestCase(TestCase):
             title='Dorm Study Desk Lamp',
             description='Warm LED desk lamp.',
             price=Decimal('250.00'),
-            category=Category.FURNITURE,
+            category=Category.DORM_LIVING,
             pickup_location=CampusLocation.STUDENT_UNION,
             status=ListingStatus.AVAILABLE
         )

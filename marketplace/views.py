@@ -61,7 +61,7 @@ def _get_filtered_listings(request):
 
     # Category filter
     selected_category = request.GET.get('category', '').strip()
-    if selected_category and selected_category in Category.values:
+    if selected_category and selected_category in Listing.Category.values:
         listings = listings.filter(category=selected_category)
 
     # Campus Pickup Location filter
@@ -108,7 +108,7 @@ def listing_list(request):
 
     context = {
         'listings': listings,
-        'categories': Category.choices,
+        'categories': Listing.Category.choices,
         'locations': CampusLocation.choices,
         'selected_category': selected_category,
         'selected_location': selected_location,

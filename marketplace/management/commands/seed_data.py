@@ -355,248 +355,248 @@ class Command(BaseCommand):
             (
                 "Omega Deluxe Mini Drafter for Engineering Drawing",
                 "Steel rods with unbreakable scale and clamp. Includes sturdy black canvas carrying bag. Mandatory for 1st-year graphics lab.",
-                "380.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Drawing Hall 1 (Mechanical Dept)", False
+                "380.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Drawing Hall 1 (Mechanical Dept)", False
             ),
             (
                 "Set of 2 Standard White Cotton Lab Coats (Unisex Size M)",
                 "100% thick white cotton with deep front pockets and durable buttons. Clean and freshly ironed. Approved for Chemistry and Bio labs.",
-                "320.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Chemistry Lab 2 Entrance", False
+                "320.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Chemistry Lab 2 Entrance", False
             ),
             (
                 "Medical Student Surgical Dissection Box Kit (14 Instruments)",
                 "Stainless steel forceps, scalpel handles, disposable surgical blades, dissection scissors, and probe needles in a velvet zip case.",
-                "450.00", Category.LAB_SUPPLIES, CampusLocation.CENTRAL_LIBRARY, "Library Medical Section", False
+                "450.00", Category.STATIONERY, CampusLocation.CENTRAL_LIBRARY, "Library Medical Section", False
             ),
             (
                 "Mastech MAS830L Digital Multimeter with Backlight & Probes",
                 "Measures DC/AC voltage, DC current, resistance, diode test, and transistor hFE. Essential for Electronics lab assignments.",
-                "350.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "EE Hardware Workshop", False
+                "350.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "EE Hardware Workshop", False
             ),
             (
                 "Engineering Drawing Instrument Box (Compass, Divider, Leads)",
                 "Camlin high-precision technical drawing compass set with extension arm and ink attachments. Clean metal joints.",
-                "220.00", Category.LAB_SUPPLIES, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
+                "220.00", Category.STATIONERY, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
             ),
             (
                 "Borosil Borosilicate Chemistry Lab Glassware Assortment",
                 "Includes 250ml conical flask, 500ml beaker, 100ml measuring cylinder, and 2 watch glasses. Heat-resistant borosilicate glass.",
-                "400.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Chemical Engineering Workshop", False
+                "400.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Chemical Engineering Workshop", False
             ),
             (
                 "Soldering Iron Kit (60W Adjustable Temp with Stand & Solder Wire)",
                 "Features ceramic heating core (200°C to 450°C), desoldering pump, tweezers, and lead-free solder wire spool.",
-                "480.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Electronics Club Workshop", True
+                "480.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Electronics Club Workshop", True
             ),
             (
                 "Roller Scale & French Curves Set for Engineering Graphics",
                 "30cm rolling ruler with built-in protractor and 3-piece acrylic French curves set. Essential for smooth curve plotting.",
-                "120.00", Category.LAB_SUPPLIES, CampusLocation.STUDENT_UNION, "SAC Stationery Counter", False
+                "120.00", Category.STATIONERY, CampusLocation.STUDENT_UNION, "SAC Stationery Counter", False
             ),
             (
                 "Mitutoyo Style 150mm Stainless Steel Vernier Caliper (0.02mm Accuracy)",
                 "Precision dual-scale metric and imperial vernier caliper with locking screw for Mechanical workshop measurements.",
-                "390.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Mechanical Workshop Fitting Shop", False
+                "390.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Mechanical Workshop Fitting Shop", False
             ),
             (
                 "Pack of 3 Solderless Breadboards (830 Tie-Points Each) + 130 Jumpers",
                 "High quality breadboards with power rails and multi-colored male-to-male and male-to-female flexible jumper cables.",
-                "300.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Digital Electronics Lab", False
+                "300.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Digital Electronics Lab", False
             ),
             (
                 "Chemical Splash Protective Safety Goggles (Anti-Fog, Clear)",
                 "Soft PVC frame with indirect ventilation and adjustable head strap. Meets OSHA lab safety requirements.",
-                "140.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Safety Office Lobby", False
+                "140.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Safety Office Lobby", False
             ),
             (
                 "A2 Size Technical Drafting Board with Stand Clamps",
                 "Smooth pine wood drawing board (65cm x 47cm) with beveled working edge. Great for drafting practice in hostel rooms.",
-                "480.00", Category.LAB_SUPPLIES, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Ground Floor", False
+                "480.00", Category.STATIONERY, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Ground Floor", False
             ),
             (
                 "Digital Vernier Height Gauge & Micrometer Screw Gauge (0-25mm)",
                 "Workshop practice tools with ratchet stop and carbide tipped measuring faces. Includes wooden storage case.",
-                "520.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Metrology Lab 104", False
+                "520.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Metrology Lab 104", False
             ),
             (
                 "Microscope Prepared Slides Box (50 Botanical & Zoology Specimens)",
                 "Optically clear glass slides with cedarwood oil immersion covers. Covers mitosis, plant tissues, and bacterial cultures.",
-                "420.00", Category.LAB_SUPPLIES, CampusLocation.SCIENCE_BLOCK, "Bio Sciences Building Atrium", False
+                "420.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Bio Sciences Building Atrium", False
             ),
             (
                 "Component Storage Organizer Box (30 Transparent Drawers)",
                 "Plastic cabinet for sorting resistors, capacitors, ICs, and small screws on project desks. Clean and crack-free.",
-                "380.00", Category.LAB_SUPPLIES, CampusLocation.STUDENT_UNION, "SAC Makerspace", True
+                "380.00", Category.STATIONERY, CampusLocation.STUDENT_UNION, "SAC Makerspace", True
             ),
             (
                 "Clinical Thermometer & Stethoscope Combo (Nurse/Med Student Grade)",
                 "Dual-head acoustic stethoscope with soft silicone ear tips and digital waterproof thermometer. Ideal for MBBS clinical postings.",
-                "650.00", Category.LAB_SUPPLIES, CampusLocation.MAIN_GATE, "Health Center Reception", False
+                "650.00", Category.STATIONERY, CampusLocation.MAIN_GATE, "Health Center Reception", False
             ),
 
             # 64-77: FURNITURE & HOSTEL LIVING
             (
                 "Ergonomic Mesh Study Chair with Adjustable Lumbar Support",
                 "Breathable mesh backrest, pneumatic height adjustment lever, and 360-degree swivel nylon caster wheels. Highly comfortable.",
-                "1800.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Room 312 Pickup", False
+                "1800.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Room 312 Pickup", False
             ),
             (
                 "Foldable Bed Laptop Table with Cup Holder & iPad Groove",
                 "Engineered wooden surface with non-slip curved metal legs. Perfect for studying on hostel beds or watching lectures.",
-                "380.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Main Porch", False
+                "380.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Main Porch", False
             ),
             (
                 "3-Tier Engineered Wood Bookshelf / Shoe Storage Rack",
                 "Compact vertical shelf (90cm height) that fits neatly next to standard hostel cupboards. Clean teak finish.",
-                "650.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "North Quad Quadrangle", False
+                "650.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "North Quad Quadrangle", False
             ),
             (
                 "Sleepwell 4-inch Single Bed Foam Mattress (6x3 ft)",
                 "High density orthopedic foam mattress. Kept inside waterproof protective cover since day one. Must be picked up from hostel room.",
-                "1400.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Wing B", True
+                "1400.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Wing B", True
             ),
             (
                 "Nilkamal Heavy Duty Plastic Armchair (Set of 2)",
                 "Sturdy weather-proof brown plastic chairs. Great for extra hostel room seating during group study sessions.",
-                "550.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel Mess Courtyard", False
+                "550.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel Mess Courtyard", False
             ),
             (
                 "Clip-On LED Desk Lamp with 3 Color Modes & Touch Dimmer",
                 "Flexible gooseneck clamp light with USB rechargeable battery. Clamp it to bed rail or desk for late-night exam prep.",
-                "340.00", Category.FURNITURE, CampusLocation.CENTRAL_LIBRARY, "Central Library Gate", False
+                "340.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Gate", False
             ),
             (
                 "Havells 400mm 3-Blade High-Speed Table Fan",
                 "Powerful air delivery with smooth oscillation and copper motor. Saves you during hot summer semester exam months.",
-                "1100.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Reception", False
+                "1100.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Reception", False
             ),
             (
                 "Collapsible Wardrobe Clothes Organizer with Dust Cover",
                 "Steel pipe frame with non-woven fabric zipped cover and side shoe pockets. Disassembles easily into a compact box.",
-                "680.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 11 Entrance", False
+                "680.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 11 Entrance", False
             ),
             (
                 "Floor Standing Full-Length Mirror with Wooden Easel Stand",
                 "Crisp distortion-free 150cm mirror. Great for getting ready for campus presentations and placement interviews.",
-                "650.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Front Desk", False
+                "650.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Front Desk", False
             ),
             (
                 "Heavy-Duty Metal 4-Tier Shoe Rack (Holds 12 Pairs)",
                 "Rust-resistant black powder-coated steel tubes. Keeps room footwear organized outside hostel room doorway.",
-                "320.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Staircase Landing", False
+                "320.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Staircase Landing", False
             ),
             (
                 "Single Bed Cotton Mattress Topper & Bedcover Set",
                 "Quilted microfiber mattress topper with 2 fitted cotton bedsheets and 2 matching pillowcases. Freshly laundered.",
-                "450.00", Category.FURNITURE, CampusLocation.STUDENT_UNION, "SAC Laundry Dropoff", False
+                "450.00", Category.DORM_LIVING, CampusLocation.STUDENT_UNION, "SAC Laundry Dropoff", False
             ),
             (
                 "Adjustable Height Laptop Riser / Stand (Aluminum Foldable)",
                 "Ergonomic angled laptop stand with silicone grips and ventilation hollows to prevent laptop overheating during compiling.",
-                "420.00", Category.FURNITURE, CampusLocation.CENTRAL_LIBRARY, "Central Library Atrium", False
+                "420.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Atrium", False
             ),
             (
                 "Cushioned Hostel Bean Bag (Size XXL - Black Leatherette)",
                 "Comfortable filled bean bag for reading and relaxing in hostel rooms. Double stitched with child-safe safety zipper.",
-                "850.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Common Room", True
+                "850.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Common Room", True
             ),
             (
                 "Multi-Tier Rolling Utility Cart with Lockable Wheels",
                 "Mesh metal baskets for storing textbooks, stationery, snacks, and toiletries next to study table.",
-                "750.00", Category.FURNITURE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing C", False
+                "750.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing C", False
             ),
 
             # 78-87: CLOTHING & ACCESSORIES
             (
                 "Official College Techfest Heavyweight Fleece Hoodie (Unisex XL)",
                 "Warm dark navy blue pullover hoodie with brushed fleece lining and kangaroo pocket. Only worn during winter fest.",
-                "499.00", Category.CLOTHING, CampusLocation.STUDENT_UNION, "SAC Merch Counter", False
+                "499.00", Category.FASHION, CampusLocation.STUDENT_UNION, "SAC Merch Counter", False
             ),
             (
                 "Wildcraft 35L Water-Resistant College Laptop Backpack",
                 "Triple compartments with padded 15.6-inch laptop sleeve, side bottle holders, and reinforced ergonomic shoulder straps.",
-                "750.00", Category.CLOTHING, CampusLocation.STUDENT_UNION, "Student Union Main Entrance", False
+                "750.00", Category.FASHION, CampusLocation.STUDENT_UNION, "Student Union Main Entrance", False
             ),
             (
                 "Men's Formal Slim-Fit Placement Blazer (Size 40 - Charcoal Grey)",
                 "Single-breasted 2-button blazer tailored by Raymond. Worn twice for corporate campus placement interviews. Dry-cleaned.",
-                "1500.00", Category.CLOTHING, CampusLocation.STUDENT_UNION, "Placement Cell Waiting Hall", False
+                "1500.00", Category.FASHION, CampusLocation.STUDENT_UNION, "Placement Cell Waiting Hall", False
             ),
             (
                 "Decathlon Quechua Windproof Water-Repellent Hiking Jacket (Size L)",
                 "Breathable lightweight outdoor shell jacket with adjustable hood. Excellent for winter morning campus bicycle commutes.",
-                "790.00", Category.CLOTHING, CampusLocation.SPORTS_COMPLEX, "Sports Complex Main Gate", False
+                "790.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Sports Complex Main Gate", False
             ),
             (
                 "Formal Silk Placement Tie & Silver Cufflinks Set",
                 "Classic navy blue jacquard tie with stainless steel cufflinks and tie clip in hard gift box. Perfect for mock interviews.",
-                "350.00", Category.CLOTHING, CampusLocation.CENTRAL_LIBRARY, "Library Main Porch", True
+                "350.00", Category.FASHION, CampusLocation.CENTRAL_LIBRARY, "Library Main Porch", True
             ),
             (
                 "Skybags 30L Dual-Compartment Campus Daypack with Rain Cover",
                 "Durable polyester fabric with built-in rain cover tucked in bottom zip. Fits thick textbooks and lunchbox effortlessly.",
-                "550.00", Category.CLOTHING, CampusLocation.MAIN_GATE, "Main Gate Metro Footbridge", False
+                "550.00", Category.FASHION, CampusLocation.MAIN_GATE, "Main Gate Metro Footbridge", False
             ),
             (
                 "Woodland Waterproof Leather Outdoor Boots (UK Size 8)",
                 "Rugged nubuck leather with rubber lug soles. Great for college trips, monsoons, and rough terrain.",
-                "1400.00", Category.CLOTHING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gate", False
+                "1400.00", Category.FASHION, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gate", False
             ),
             (
                 "Traditional Embroidered Kurta Set for Cultural Fests (Size 38)",
                 "Rich cotton silk fabric in maroon with subtle thread embroidery. Ideal for Diwali, ethnic day, and graduation celebrations.",
-                "650.00", Category.CLOTHING, CampusLocation.STUDENT_UNION, "Cultural Club Room", False
+                "650.00", Category.FASHION, CampusLocation.STUDENT_UNION, "Cultural Club Room", False
             ),
             (
                 "American Tourister 20-inch Cabin Trolley Luggage (Hardcase)",
                 "4-wheel 360 degree spinner suitcase with TSA lock. Perfect for carrying semester luggage on domestic flights and trains.",
-                "1850.00", Category.CLOTHING, CampusLocation.MAIN_GATE, "Main Security Gate", False
+                "1850.00", Category.FASHION, CampusLocation.MAIN_GATE, "Main Security Gate", False
             ),
             (
                 "Campus Sports Tracksuit (Jacket & Track Pants - Size M)",
                 "Quick-dry moisture-wicking fabric with zippered pockets. Worn for inter-hostel football tournament practices.",
-                "500.00", Category.CLOTHING, CampusLocation.SPORTS_COMPLEX, "Track & Field Bleachers", False
+                "500.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Track & Field Bleachers", False
             ),
 
             # 88-95: HOUSING & SUBLETS
             (
                 "Single Occupancy AC Room in 3BHK Flat near North Campus Metro Gate 2",
                 "Fully furnished single bedroom with AC, wardrobe, study desk, 200Mbps Wi-Fi, washing machine, and maid service included. Sublet for spring semester.",
-                "7500.00", Category.HOUSING, CampusLocation.MAIN_GATE, "Metro Station Gate 2 Meetup", False
+                "7500.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Metro Station Gate 2 Meetup", False
             ),
             (
                 "Double Sharing Furnished PG Room with 3 Meals & Wi-Fi near South Campus",
                 "Includes RO drinking water, power backup, daily housekeeping, and hot water geyser. Walking distance from university bus stop.",
-                "5500.00", Category.HOUSING, CampusLocation.STUDENT_UNION, "SAC Front Steps", False
+                "5500.00", Category.DORM_LIVING, CampusLocation.STUDENT_UNION, "SAC Front Steps", False
             ),
             (
                 "Summer Internship Sublet: Private Room in 2BHK Flat near Powai IIT Main Gate",
                 "Available May to July for summer interns and research assistants. AC, modular kitchen, refrigerator, and gym access.",
-                "8500.00", Category.HOUSING, CampusLocation.MAIN_GATE, "IIT Powai Main Gate Checkpost", False
+                "8500.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "IIT Powai Main Gate Checkpost", False
             ),
             (
                 "Studio Apartment Sublet for Monsoon Semester (Fully Furnished, Power Backup)",
                 "Private kitchenette, attached washroom, balcony with green campus view. Ideal for PhD scholars or final year project pairs.",
-                "9500.00", Category.HOUSING, CampusLocation.CENTRAL_LIBRARY, "Central Library Parking Area", True
+                "9500.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Parking Area", True
             ),
             (
                 "Shared 2BHK Flat Lease Transfer near Knowledge Park / Campus Outer Gate",
                 "Spacious hall, 2 bathrooms, gated society with 24x7 security guards and grocery stores on campus boundary.",
-                "6000.00", Category.HOUSING, CampusLocation.MAIN_GATE, "Campus Outer Security Gate", False
+                "6000.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Campus Outer Security Gate", False
             ),
             (
                 "Furnished Master Bedroom Sublet in 3BHK with Attached Washroom & Balcony",
                 "King bed, split AC, modular wardrobes, and high-speed fiber internet. Roommate is an easy-going 4th year student.",
-                "8000.00", Category.HOUSING, CampusLocation.NORTH_QUAD_DORMS, "Hostel Visitors Gate", False
+                "8000.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel Visitors Gate", False
             ),
             (
                 "Single Bed in Air-Conditioned PG near Tech Park / College Campus",
                 "Includes morning breakfast and dinner. Laundry facility available. Low deposit of 1 month only.",
-                "4800.00", Category.HOUSING, CampusLocation.MAIN_GATE, "Main Gate Visitors Desk", False
+                "4800.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Main Gate Visitors Desk", False
             ),
             (
                 "Spacious 1RK Flat Sublet for Winter Semester near University Law Faculty",
                 "Furnished with double bed, study table, refrigerator, and induction stove. Very quiet residential street.",
-                "6200.00", Category.HOUSING, CampusLocation.CENTRAL_LIBRARY, "Law Faculty Library Gate", False
+                "6200.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Law Faculty Library Gate", False
             ),
 
             # 96-105: OTHER (SPORTS, INSTRUMENTS, APPLIANCES & HOSTEL GADGETS)

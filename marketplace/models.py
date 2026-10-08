@@ -4,13 +4,16 @@ from django.urls import reverse
 
 
 class Category(models.TextChoices):
-    TEXTBOOKS = 'TEXTBOOKS', 'Textbooks'
-    ELECTRONICS = 'ELECTRONICS', 'Electronics'
-    LAB_SUPPLIES = 'LAB_SUPPLIES', 'Lab Supplies'
-    FURNITURE = 'FURNITURE', 'Furniture'
-    CLOTHING = 'CLOTHING', 'Clothing'
-    HOUSING = 'HOUSING', 'Housing'
-    OTHER = 'OTHER', 'Other'
+    TEXTBOOKS = 'TEXTBOOKS', 'Textbooks & Study Material'
+    ELECTRONICS = 'ELECTRONICS', 'Electronics & Gadgets'
+    DORM_LIVING = 'DORM_LIVING', 'Hostel & Dorm Essentials'
+    STATIONERY = 'STATIONERY', 'Stationery & Lab Equipment'
+    FASHION = 'FASHION', 'Clothing & Formal Wear'
+    BICYCLES_COMMUTE = 'BICYCLES_COMMUTE', 'Bicycles & Campus Commute'
+    SPORTS_FITNESS = 'SPORTS_FITNESS', 'Sports & Gym Gear'
+    ENTERTAINMENT = 'ENTERTAINMENT', 'Gaming, Hobbies & Instruments'
+    LOST_AND_FOUND = 'LOST_AND_FOUND', 'Lost & Found'
+    OTHER = 'OTHER', 'Miscellaneous'
 
 
 class CampusLocation(models.TextChoices):
@@ -31,6 +34,8 @@ class Listing(models.Model):
     """
     Campus Marketplace item listing.
     """
+    Category = Category
+
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -40,9 +45,10 @@ class Listing(models.Model):
     description = models.TextField()
     price = models.DecimalField(max_digits=8, decimal_places=2)
     category = models.CharField(
-        max_length=20,
+        max_length=32,
         choices=Category.choices,
-        default=Category.OTHER
+        default=Category.TEXTBOOKS,
+        db_index=True,
     )
     image = models.ImageField(
         upload_to='listings/',
