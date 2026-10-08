@@ -30,7 +30,7 @@ An exhaustive, 5-stage automated and manual verification audit was conducted on 
 | **Sold Items Visual Distinction** | Template audit (`listing_card.html`) | Grayscale image, contrast filter, prominent badge & banner | **PASS** |
 | **Empty States & Error Alerts** | Template audit | Branded empty state cards & error banners | **PASS** |
 | **Automated Test Suite** | `python manage.py test` | 19 tests executed across accounts and marketplace, 0 failures | **PASS** |
-| **Deliverables Documentation** | `README.md`, `TECHNICAL_APPROACH.md`, `AI_DECLARATION.md` | Fully synchronized, detailed, and compliant | **PASS** |
+| **Deliverables Documentation** | `README.md`, `TECHNICAL_APPROACH.md` | Fully synchronized, detailed, and compliant | **PASS** |
 
 ---
 
@@ -111,7 +111,6 @@ An exhaustive, 5-stage automated and manual verification audit was conducted on 
 
 - [x] **`README.md`**: Complete setup guide, environment variable specifications, and production architecture summary.
 - [x] **`TECHNICAL_APPROACH.md`**: In-depth documentation detailing database schemas, controllers, HTMX endpoints, and external API pipelines.
-- [x] **`AI_DECLARATION.md`**: Formal AI tools and prompt disclosure statement.
 - [x] **`VERIFICATION_REPORT.md`**: This comprehensive verification and security report.
 
 ---

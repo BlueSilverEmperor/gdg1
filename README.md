@@ -89,16 +89,15 @@ A production-ready, peer-to-peer campus commerce web application designed specif
 │   ├── accounts/             # Login, register, and OTP verification pages
 │   └── marketplace/          # Feed, detail, wishlist, forms, and partials
 ├── static/                   # Static assets (CSS, JS, branding)
-├── media/                    # Local media uploads directory (fallback)
-├── build.sh                  # Render deployment build script (collectstatic + migrate)
-├── render.yaml               # Render Infrastructure-as-Code Blueprint configuration
-├── Procfile                  # Gunicorn web server process configuration
+├── gunicorn.conf.py          # Production WSGI server configuration
+├── railway.json              # Railway deployment configuration
+├── Procfile                  # Process manager configuration
 ├── requirements.txt          # Production dependencies
-├── .python-version           # Render runtime version specification (Python 3.12.8)
-├── runtime.txt               # Fallback runtime specification
+├── .python-version           # Python runtime version specification (3.12.8)
 ├── .env.example              # Environment variables reference template
-├── TECHNICAL_APPROACH.md     # In-depth architectural documentation
-├── AI_DECLARATION.md         # Full AI tools & prompts disclosure
+├── docs/                     # Technical documentation & audit reports
+│   ├── TECHNICAL_APPROACH.md
+│   └── VERIFICATION_REPORT.md
 └── manage.py                 # Django command-line runner
 ```
 
@@ -284,7 +283,6 @@ To prevent Render from sleeping and ensure 100% warm-instance availability:
 ---
 
 ## 📄 Additional Deliverables
-- In-depth architectural blueprint: [`TECHNICAL_APPROACH.md`](file:///c:/Users/sridh/Desktop/gdg/TECHNICAL_APPROACH.md)
-- Complete disclosure of AI tools & prompts: [`AI_DECLARATION.md`](file:///c:/Users/sridh/Desktop/gdg/AI_DECLARATION.md)
-- Render Blueprint Configuration: [`render.yaml`](file:///c:/Users/sridh/Desktop/gdg/render.yaml)
+- In-depth architectural blueprint: [`docs/TECHNICAL_APPROACH.md`](file:///c:/Users/sridh/Desktop/gdg/docs/TECHNICAL_APPROACH.md)
+- Complete system audit & verification report: [`docs/VERIFICATION_REPORT.md`](file:///c:/Users/sridh/Desktop/gdg/docs/VERIFICATION_REPORT.md)
 
