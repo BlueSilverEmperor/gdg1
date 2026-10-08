@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "python manage.py collectstatic --noinput && python manage.py migrate"
+    "buildCommand": "python manage.py collectstatic --noinput && python manage.py migrate && python manage.py shell -c \"from marketplace.models import Listing; from django.core.management import call_command; call_command('seed_data') if Listing.objects.count() == 0 else print('Listings present: %d' % Listing.objects.count())\""
   },
   "deploy": {
     "startCommand": "gunicorn campus_marketplace.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --worker-class gthread --timeout 60",
