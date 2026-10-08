@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 from .forms import (
     StudentRegistrationForm,
     StudentLoginForm,
@@ -409,6 +410,14 @@ def reset_password_view(request):
             otp_record = PasswordResetOTP.objects.filter(user=user, is_used=False).order_by('-created_at').first()
 
             if not otp_record:
+                # Check if this OTP was just submitted and used (e.g. double submit or refresh)
+                recent_used = PasswordResetOTP.objects.filter(user=user, otp_code=submitted_otp, is_used=True).order_by('-created_at').first()
+                if recent_used and (timezone.now() - recent_used.created_at).total_seconds() < 600:
+                    messages.success(
+                        request,
+                        "Your password has already been successfully reset! Please log in with your new password."
+                    )
+                    return redirect('accounts:login')
                 form.add_error('otp_code', "No active password reset request found. Please request a new code.")
             elif not otp_record.is_valid():
                 form.add_error('otp_code', "This reset code has expired (codes expire in 10 minutes). Please request a new one.")
