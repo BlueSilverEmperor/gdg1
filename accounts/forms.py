@@ -12,6 +12,7 @@ class StudentRegistrationForm(forms.ModelForm):
     """
     Registration form with email format validation (campus/student email)
     and secure password confirmation.
+    Zero-latency instant account activation.
     """
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
@@ -64,10 +65,7 @@ class StudentRegistrationForm(forms.ModelForm):
         if not phone:
             return ""
 
-        # Remove spaces, hyphens, parentheses
         digits = re.sub(r'[\s\-\(\)]', '', phone)
-
-        # Strip country code +91 or 91 or leading 0 if present
         if digits.startswith('+91'):
             digits = digits[3:]
         elif digits.startswith('91') and len(digits) == 12:
@@ -75,13 +73,11 @@ class StudentRegistrationForm(forms.ModelForm):
         elif digits.startswith('0') and len(digits) == 11:
             digits = digits[1:]
 
-        # Validate standard Indian 10-digit mobile number starting with 6, 7, 8, or 9
         if not re.match(r'^[6-9]\d{9}$', digits):
             raise ValidationError(
                 "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 (e.g. +91 9876543210)."
             )
 
-        # Standardize format as +91 XXXXXXXXXX
         return f"+91 {digits}"
 
     def clean_email(self):
@@ -89,22 +85,12 @@ class StudentRegistrationForm(forms.ModelForm):
         if not email:
             raise ValidationError("A valid campus email is required.")
 
-        # Check standard email pattern
         email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
         match = re.match(email_pattern, email)
         if not match:
             raise ValidationError("Please enter a valid email address.")
 
-        domain = match.group(1).lower()
-        # Ensure it looks like an institutional / academic / campus or standard verified email domain
-        # Allow .edu, .ac.*, .edu.* or any university / standard domain while rejecting invalid syntax
         if User.objects.filter(email__iexact=email).exists():
-            existing = User.objects.filter(email__iexact=email).first()
-            if existing and not existing.is_active:
-                raise ValidationError(
-                    "An account with this email is already registered and pending verification. "
-                    "Please check your inbox or click 'Verify Email' to enter your code."
-                )
             raise ValidationError("An account with this email address already exists.")
 
         return email
@@ -122,8 +108,8 @@ class StudentRegistrationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])
-        # Require OTP email verification before account activation
-        user.is_active = False
+        user.is_active = True
+        user.is_verified = True
         if commit:
             user.save()
         return user
@@ -151,37 +137,9 @@ class StudentLoginForm(AuthenticationForm):
     )
 
 
-class OTPVerificationForm(forms.Form):
-    """
-    Form for validating the 6-digit email verification OTP.
-    """
-    otp_code = forms.CharField(
-        max_length=10,
-        widget=forms.TextInput(attrs={
-            'placeholder': '••••••',
-            'class': 'w-full text-center text-3xl font-mono tracking-[0.5em] font-bold py-3.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition',
-            'autofocus': 'autofocus',
-            'autocomplete': 'one-time-code',
-            'inputmode': 'numeric',
-            'maxlength': '8',
-            'required': True,
-        }),
-        label="6-Digit Verification Code",
-        help_text="Enter the 6-digit numeric code sent to your student email."
-    )
-
-    def clean_otp_code(self):
-        raw = self.cleaned_data.get('otp_code', '')
-        # Strip all whitespace, hyphens, and non-digits
-        code = re.sub(r'\D', '', str(raw).strip())
-        if len(code) != 6:
-            raise ValidationError("Please enter a valid 6-digit numeric verification code.")
-        return code
-
-
 class ForgotPasswordRequestForm(forms.Form):
     """
-    Form for requesting a 6-digit password reset OTP by student email.
+    Form for requesting a password reset by registered student email.
     """
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={
@@ -205,24 +163,10 @@ class ForgotPasswordRequestForm(forms.Form):
         return email
 
 
-class ResetPasswordWithOTPForm(forms.Form):
+class ResetPasswordForm(forms.Form):
     """
-    Form for entering the 6-digit reset OTP and setting a secure new password.
+    Form for directly resetting a student password without OTP friction.
     """
-    otp_code = forms.CharField(
-        max_length=6,
-        widget=forms.TextInput(attrs={
-            'placeholder': '123456',
-            'class': 'w-full text-center text-3xl font-mono tracking-[0.4em] font-bold py-3.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition',
-            'autofocus': 'autofocus',
-            'autocomplete': 'one-time-code',
-            'inputmode': 'numeric',
-            'maxlength': '6',
-            'required': True,
-        }),
-        label="6-Digit Reset Code",
-        help_text="Enter the 6-digit code sent to your email."
-    )
     new_password = forms.CharField(
         widget=forms.PasswordInput(attrs={
             'placeholder': 'Enter new password (min 6 characters)',
@@ -249,13 +193,6 @@ class ResetPasswordWithOTPForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.user = user
 
-    def clean_otp_code(self):
-        raw = self.cleaned_data.get('otp_code', '')
-        code = re.sub(r'\D', '', str(raw).strip())
-        if len(code) != 6:
-            raise ValidationError("Please enter a valid 6-digit numeric reset code.")
-        return code
-
     def clean(self):
         cleaned_data = super().clean()
         new_password = cleaned_data.get('new_password')
@@ -271,5 +208,3 @@ class ResetPasswordWithOTPForm(forms.Form):
                     self.add_error('new_password', e)
 
         return cleaned_data
-
-
