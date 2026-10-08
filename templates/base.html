@@ -228,5 +228,23 @@
     </footer>
 
     {% block extra_scripts %}{% endblock %}
+
+    <script>
+        // Ensure HTMX dynamically uses the latest CSRF token from the browser cookie
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            let csrfToken = null;
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const c = cookies[i].trim();
+                if (c.startsWith('csrftoken=')) {
+                    csrfToken = decodeURIComponent(c.substring('csrftoken='.length));
+                    break;
+                }
+            }
+            if (csrfToken) {
+                evt.detail.headers['X-CSRFToken'] = csrfToken;
+            }
+        });
+    </script>
 </body>
 </html>

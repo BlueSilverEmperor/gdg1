@@ -50,30 +50,72 @@ if railway_static_url and railway_static_url not in ALLOWED_HOSTS:
 if '*' in ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['*']
 
+# Reverse Proxy Header Handling (Railway, Render, Cloudflare, etc.)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 # CSRF Trusted Origins for deployed domain(s)
-csrf_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.vercel.app,https://*.onrender.com,https://*.railway.app,https://*.up.railway.app')
+csrf_origins_raw = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://*.vercel.app,https://*.onrender.com,https://*.railway.app,https://*.up.railway.app'
+)
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins_raw.split(',') if o.strip()]
-for origin in ['https://*.vercel.app', 'https://*.onrender.com', 'https://*.railway.app', 'https://*.up.railway.app']:
+
+# Core trusted domain patterns across HTTPS and HTTP
+core_trusted_origins = [
+    'https://*.railway.app',
+    'https://*.up.railway.app',
+    'https://*.onrender.com',
+    'https://*.vercel.app',
+    'http://*.railway.app',
+    'http://*.up.railway.app',
+    'http://*.onrender.com',
+    'http://*.vercel.app',
+    'https://web-production-7010d.up.railway.app',
+    'http://web-production-7010d.up.railway.app',
+    'https://web-production-b8a1a1.up.railway.app',
+    'http://web-production-b8a1a1.up.railway.app',
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+for origin in core_trusted_origins:
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
+# Dynamically ensure all hosts configured in ALLOWED_HOSTS have trusted CSRF origins
+for host in list(ALLOWED_HOSTS):
+    if not host or host == '*':
+        continue
+    if host.startswith('.'):
+        for proto in ('https://*', 'http://*'):
+            target = f"{proto}{host}"
+            if target not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(target)
+    else:
+        for proto in ('https://', 'http://'):
+            target = f"{proto}{host}"
+            if target not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(target)
+
 if render_external_hostname:
-    render_origin = f'https://{render_external_hostname}'
-    if render_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(render_origin)
+    for proto in ('https://', 'http://'):
+        render_orig = f"{proto}{render_external_hostname}"
+        if render_orig not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(render_orig)
 
 if railway_public_domain:
-    railway_origin = f'https://{railway_public_domain}'
-    if railway_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(railway_origin)
+    for proto in ('https://', 'http://'):
+        railway_orig = f"{proto}{railway_public_domain}"
+        if railway_orig not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(railway_orig)
 
 if railway_static_url:
-    railway_static_origin = f'https://{railway_static_url}'
-    if railway_static_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(railway_static_origin)
-
-# Trust reverse proxy header from Railway / cloud providers
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    for proto in ('https://', 'http://'):
+        static_orig = f"{proto}{railway_static_url}"
+        if static_orig not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(static_orig)
 
 # Application definition
 INSTALLED_APPS = [

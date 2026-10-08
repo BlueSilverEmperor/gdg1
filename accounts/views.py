@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 from .forms import (
     StudentRegistrationForm,
     StudentLoginForm,
@@ -15,6 +16,7 @@ from .forms import (
 User = get_user_model()
 
 
+@never_cache
 def register_view(request):
     """
     Handle student account registration with zero-latency campus authentication.
@@ -46,6 +48,7 @@ def register_view(request):
     return render(request, 'accounts/register.html', {'form': form})
 
 
+@never_cache
 def login_view(request):
     """
     Handle student user authentication with standard session login.
@@ -86,6 +89,7 @@ def logout_view(request):
     return redirect('accounts:login')
 
 
+@never_cache
 def forgot_password_view(request):
     """
     Handle forgot password request by email.
@@ -119,6 +123,7 @@ def forgot_password_view(request):
     return render(request, 'accounts/forgot_password.html', {'form': form})
 
 
+@never_cache
 def reset_password_view(request):
     """
     Set a new password directly with password complexity validation.
