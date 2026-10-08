@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
@@ -8,7 +8,7 @@ from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import Listing, SavedListing, ListingMessage, Category, ListingStatus, CampusLocation
-from .forms import ListingForm, StudentRegistrationForm
+from .forms import ListingForm
 from .services import fetch_book_by_isbn
 
 
@@ -548,26 +548,3 @@ def chat_messages_partial(request, listing_id, other_user_id):
         'listing': listing,
         'other_user': other_user,
     })
-
-
-def register_view(request):
-    """
-    Direct, instant student registration using college email validation (.edu, .ac.in).
-    Hashes password via set_password, sets is_active=True, and signs in immediately via login().
-    """
-    if request.user.is_authenticated:
-        return redirect('marketplace:listing_list')
-
-    if request.method == 'POST':
-        form = StudentRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password'])
-            user.is_active = True
-            user.save()
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            messages.success(request, f"Welcome to Campus Marketplace, {user.first_name or user.username}!")
-            return redirect('marketplace:listing_list')
-    else:
-        form = StudentRegistrationForm()
-    return render(request, 'accounts/register.html', {'form': form})

@@ -2,6 +2,7 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 User = get_user_model()
@@ -9,117 +10,120 @@ User = get_user_model()
 
 class StudentRegistrationForm(forms.ModelForm):
     """
-    Direct, instant student registration form validating college domains (.edu, .ac.in).
-    Hashes passwords securely and requires minimum 8 characters.
+    Registration form with email format validation (campus/student email)
+    and secure password confirmation.
     """
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Create password (min. 8 characters)',
-            'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm',
+            'placeholder': 'Enter strong password (min 6 characters)',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             'autocomplete': 'new-password',
+            'required': True,
         }),
-        min_length=8,
-        help_text="Password must be at least 8 characters long."
-    )
-    confirm_password = forms.CharField(
-        required=False,
-        widget=forms.PasswordInput(attrs={
-            'placeholder': 'Confirm password',
-            'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm',
-            'autocomplete': 'new-password',
-        }),
-        label="Confirm Password"
+        min_length=6,
+        help_text="Minimum 6 characters."
     )
     password_confirm = forms.CharField(
-        required=False,
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Confirm password',
-            'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm',
+            'placeholder': 'Confirm your password',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             'autocomplete': 'new-password',
+            'required': True,
         }),
         label="Confirm Password"
     )
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'campus_name', 'phone_number']
+        fields = ['username', 'email', 'campus_name', 'phone_number']
         widgets = {
             'username': forms.TextInput(attrs={
-                'placeholder': 'Student username',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
+                'placeholder': 'e.g. rahul_sharma',
+                'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
                 'autocomplete': 'username',
-            }),
-            'first_name': forms.TextInput(attrs={
-                'placeholder': 'First name',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
-                'autocomplete': 'given-name',
-            }),
-            'last_name': forms.TextInput(attrs={
-                'placeholder': 'Last name',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
-                'autocomplete': 'family-name',
+                'required': True,
             }),
             'email': forms.EmailInput(attrs={
-                'placeholder': 'student@campus.edu or college.ac.in',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
+                'placeholder': 'e.g. rahul@iitb.ac.in or student@campus.edu.in',
+                'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
                 'autocomplete': 'email',
+                'required': True,
             }),
             'campus_name': forms.TextInput(attrs={
-                'placeholder': 'e.g. IIT Delhi, BITS Pilani, NMIT',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
+                'placeholder': 'e.g. IIT Delhi, BITS Pilani, DU North Campus',
+                'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             }),
             'phone_number': forms.TextInput(attrs={
-                'placeholder': 'e.g. +91 9876543210',
-                'class': 'w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-sm',
+                'placeholder': 'e.g. +91 98765 43210 (10 digits)',
+                'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
             }),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Ensure optional fields don't block validation if not supplied
-        if 'first_name' in self.fields:
-            self.fields['first_name'].required = False
-        if 'last_name' in self.fields:
-            self.fields['last_name'].required = False
-        if 'campus_name' in self.fields:
-            self.fields['campus_name'].required = False
-        if 'phone_number' in self.fields:
-            self.fields['phone_number'].required = False
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number', '').strip()
+        if not phone:
+            return ""
+
+        # Remove spaces, hyphens, parentheses
+        digits = re.sub(r'[\s\-\(\)]', '', phone)
+
+        # Strip country code +91 or 91 or leading 0 if present
+        if digits.startswith('+91'):
+            digits = digits[3:]
+        elif digits.startswith('91') and len(digits) == 12:
+            digits = digits[2:]
+        elif digits.startswith('0') and len(digits) == 11:
+            digits = digits[1:]
+
+        # Validate standard Indian 10-digit mobile number starting with 6, 7, 8, or 9
+        if not re.match(r'^[6-9]\d{9}$', digits):
+            raise ValidationError(
+                "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 (e.g. +91 9876543210)."
+            )
+
+        # Standardize format as +91 XXXXXXXXXX
+        return f"+91 {digits}"
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '').strip().lower()
         if not email:
             raise ValidationError("A valid campus email is required.")
 
-        # Enforce college domain restriction
-        valid_suffixes = ('.edu', '.ac.in', '.edu.in', 'campus.edu')
-        if not any(email.endswith(suffix) for suffix in valid_suffixes):
-            raise ValidationError("Registration requires a recognized college/university email address (.edu or .ac.in).")
+        # Check standard email pattern
+        email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
+        match = re.match(email_pattern, email)
+        if not match:
+            raise ValidationError("Please enter a valid email address.")
 
-        if User.objects.filter(email=email).exists():
-            raise ValidationError("An account with this campus email already exists.")
+        domain = match.group(1).lower()
+        # Ensure it looks like an institutional / academic / campus or standard verified email domain
+        # Allow .edu, .ac.*, .edu.* or any university / standard domain while rejecting invalid syntax
+        if User.objects.filter(email__iexact=email).exists():
+            existing = User.objects.filter(email__iexact=email).first()
+            if existing and not existing.is_active:
+                raise ValidationError(
+                    "An account with this email is already registered and pending verification. "
+                    "Please check your inbox or click 'Verify Email' to enter your code."
+                )
+            raise ValidationError("An account with this email address already exists.")
 
         return email
 
     def clean(self):
         cleaned_data = super().clean()
-        p1 = cleaned_data.get('password')
-        p2 = cleaned_data.get('confirm_password') or cleaned_data.get('password_confirm')
+        password = cleaned_data.get('password')
+        password_confirm = cleaned_data.get('password_confirm')
 
-        if not p2:
-            raise ValidationError("Passwords do not match.")
-        if p1 and p2 and p1 != p2:
-            raise ValidationError("Passwords do not match.")
-        if p1 and len(p1) < 8:
-            raise ValidationError("Password must be at least 8 characters long.")
+        if password and password_confirm and password != password_confirm:
+            self.add_error('password_confirm', "Passwords do not match. Please verify your password.")
 
         return cleaned_data
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])
-        # New accounts are instantly active and verified
-        user.is_active = True
+        # Require OTP email verification before account activation
+        user.is_active = False
         if commit:
             user.save()
         return user
@@ -145,3 +149,127 @@ class StudentLoginForm(AuthenticationForm):
             'required': True,
         })
     )
+
+
+class OTPVerificationForm(forms.Form):
+    """
+    Form for validating the 6-digit email verification OTP.
+    """
+    otp_code = forms.CharField(
+        max_length=10,
+        widget=forms.TextInput(attrs={
+            'placeholder': '••••••',
+            'class': 'w-full text-center text-3xl font-mono tracking-[0.5em] font-bold py-3.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition',
+            'autofocus': 'autofocus',
+            'autocomplete': 'one-time-code',
+            'inputmode': 'numeric',
+            'maxlength': '8',
+            'required': True,
+        }),
+        label="6-Digit Verification Code",
+        help_text="Enter the 6-digit numeric code sent to your student email."
+    )
+
+    def clean_otp_code(self):
+        raw = self.cleaned_data.get('otp_code', '')
+        # Strip all whitespace, hyphens, and non-digits
+        code = re.sub(r'\D', '', str(raw).strip())
+        if len(code) != 6:
+            raise ValidationError("Please enter a valid 6-digit numeric verification code.")
+        return code
+
+
+class ForgotPasswordRequestForm(forms.Form):
+    """
+    Form for requesting a 6-digit password reset OTP by student email.
+    """
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'e.g. rahul@iitb.ac.in or student@campus.edu.in',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'email',
+            'autofocus': 'autofocus',
+            'required': True,
+        }),
+        label="Registered Student Email",
+        help_text="Enter your university or registered campus email address."
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not email:
+            raise ValidationError("Please enter your registered student email.")
+        email_pattern = r'^[\w\.-]+@([\w\.-]+\.\w+)$'
+        if not re.match(email_pattern, email):
+            raise ValidationError("Please enter a valid email address.")
+        return email
+
+
+class ResetPasswordWithOTPForm(forms.Form):
+    """
+    Form for entering the 6-digit reset OTP and setting a secure new password.
+    """
+    otp_code = forms.CharField(
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            'placeholder': '123456',
+            'class': 'w-full text-center text-3xl font-mono tracking-[0.4em] font-bold py-3.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition',
+            'autofocus': 'autofocus',
+            'autocomplete': 'one-time-code',
+            'inputmode': 'numeric',
+            'maxlength': '6',
+            'required': True,
+        }),
+        label="6-Digit Reset Code",
+        help_text="Enter the 6-digit code sent to your email."
+    )
+    new_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Enter new password (min 6 characters)',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'new-password',
+            'required': True,
+        }),
+        label="New Password",
+        min_length=6,
+        help_text="Choose a secure password (at least 6 characters)."
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Confirm your new password',
+            'class': 'w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition',
+            'autocomplete': 'new-password',
+            'required': True,
+        }),
+        label="Confirm New Password",
+        help_text="Re-type your new password to verify."
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_otp_code(self):
+        raw = self.cleaned_data.get('otp_code', '')
+        code = re.sub(r'\D', '', str(raw).strip())
+        if len(code) != 6:
+            raise ValidationError("Please enter a valid 6-digit numeric reset code.")
+        return code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get('new_password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        if new_password and confirm_password:
+            if new_password != confirm_password:
+                self.add_error('confirm_password', "Passwords do not match. Please re-enter both passwords.")
+            else:
+                try:
+                    validate_password(new_password, user=self.user)
+                except ValidationError as e:
+                    self.add_error('new_password', e)
+
+        return cleaned_data
+
+

@@ -266,9 +266,31 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'marketplace:listing_list'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-# Zero-latency email configuration (console backend for developer safety)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'Campus Marketplace <no-reply@campusmarketplace.edu>'
+# Email Configuration (Gmail SMTP with local fallback)
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').strip()  # 16-character Google App Password
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
+
+# Secure TLS (port 587) vs SSL (port 465) mutual exclusivity handling
+if EMAIL_PORT == 465 or os.environ.get('EMAIL_USE_SSL', 'False').lower() in ('true', '1'):
+    EMAIL_USE_SSL = True
+    EMAIL_USE_TLS = False
+else:
+    EMAIL_USE_SSL = False
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1')
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    f"Campus Marketplace <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Campus Marketplace <no-reply@campusmarketplace.local>"
+)
+
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    logger.warning("EMAIL_HOST_USER/PASSWORD not set. Falling back to console.EmailBackend for local dev.")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

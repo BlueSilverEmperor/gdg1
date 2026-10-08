@@ -4,7 +4,6 @@ from django.core.files.base import ContentFile
 import requests
 from decimal import Decimal
 from .models import Listing, Category, ListingStatus, CampusLocation
-from accounts.forms import StudentRegistrationForm
 
 
 class ListingForm(forms.ModelForm):
