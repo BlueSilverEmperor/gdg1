@@ -5,6 +5,7 @@
 *.json
 !package.json
 !tsconfig.json
+!railway.json
 serviceAccountKey.json
 *firebase-adminsdk*.json
 

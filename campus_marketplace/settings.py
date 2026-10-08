@@ -28,24 +28,32 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,testserver,.vercel.app,.onrender.com')
+allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,testserver,.vercel.app,.onrender.com,.railway.app,.up.railway.app')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
-for host in ['testserver', '.vercel.app', '.onrender.com', '127.0.0.1', 'localhost']:
+for host in ['testserver', '.vercel.app', '.onrender.com', '.railway.app', '.up.railway.app', '127.0.0.1', 'localhost']:
     if host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(host)
 
-# Automatically support Render's dynamically assigned external hostname
+# Automatically support Render's and Railway's dynamically assigned external hostnames
 render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(render_external_hostname)
+
+railway_public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+if railway_public_domain and railway_public_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(railway_public_domain)
+
+railway_static_url = os.environ.get('RAILWAY_STATIC_URL')
+if railway_static_url and railway_static_url not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(railway_static_url)
 
 if '*' in ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['*']
 
 # CSRF Trusted Origins for deployed domain(s)
-csrf_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.vercel.app,https://*.onrender.com')
+csrf_origins_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.vercel.app,https://*.onrender.com,https://*.railway.app,https://*.up.railway.app')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins_raw.split(',') if o.strip()]
-for origin in ['https://*.vercel.app', 'https://*.onrender.com']:
+for origin in ['https://*.vercel.app', 'https://*.onrender.com', 'https://*.railway.app', 'https://*.up.railway.app']:
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
@@ -53,6 +61,11 @@ if render_external_hostname:
     render_origin = f'https://{render_external_hostname}'
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
+
+if railway_public_domain:
+    railway_origin = f'https://{railway_public_domain}'
+    if railway_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_origin)
 
 # Application definition
 INSTALLED_APPS = [
