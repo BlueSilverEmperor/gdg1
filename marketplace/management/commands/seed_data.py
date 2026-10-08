@@ -1,19 +1,89 @@
+import io
+import os
+import random
+import urllib.request
+from decimal import Decimal
+
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+
 from marketplace.models import Listing, Category, ListingStatus, CampusLocation, SavedListing
-from decimal import Decimal
-import random
 
 User = get_user_model()
 
+# Curated, verified high-resolution campus photos mapped per category
+CATEGORY_PHOTO_URLS = {
+    Category.TEXTBOOKS: [
+        "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1568667256549-094345857637?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.ELECTRONICS: [
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.DORM_LIVING: [
+        "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.STATIONERY: [
+        "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.FASHION: [
+        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.BICYCLES_COMMUTE: [
+        "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.SPORTS_FITNESS: [
+        "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1613918108466-292b78a8ef95?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.ENTERTAINMENT: [
+        "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.LOST_AND_FOUND: [
+        "https://images.unsplash.com/photo-1544816155-12df9643f363?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=700&auto=format&fit=crop&q=80",
+    ],
+    Category.OTHER: [
+        "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=700&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700&auto=format&fit=crop&q=80",
+    ],
+}
+
 
 class Command(BaseCommand):
-    help = "Seeds database with ~100 realistic Indian campus student marketplace listings"
+    help = "Seeds database with ~100 realistic student marketplace listings complete with pictures, categories, and wishlist favorites."
 
     def handle(self, *args, **options):
         self.stdout.write("Creating student user accounts...")
 
-        # 12 Diverse Indian University Student Profiles
         student_profiles = [
             {
                 "username": "priya_sharma",
@@ -58,34 +128,34 @@ class Command(BaseCommand):
                 "phone_number": "+91 9448123671",
             },
             {
-                "username": "aditya_sen",
-                "email": "aditya.sen@iitkgp.ac.in",
-                "campus_name": "IIT Kharagpur (Nehru Hall)",
-                "phone_number": "+91 9830123562",
-            },
-            {
-                "username": "pooja_deshmukh",
-                "email": "pooja.d@coep.ac.in",
-                "campus_name": "COEP Pune (Girls Hostel)",
-                "phone_number": "+91 9850123783",
-            },
-            {
                 "username": "rahul_verma",
-                "email": "rahul.v@nitt.edu",
-                "campus_name": "NIT Trichy (Amber Hostel)",
-                "phone_number": "+91 9443123894",
+                "email": "rahul.v@nitk.edu.in",
+                "campus_name": "NIT Surathkal (Hostel 7)",
+                "phone_number": "+91 9886123902",
             },
             {
-                "username": "tanvi_joshi",
-                "email": "tanvi.j@iiit.ac.in",
-                "campus_name": "IIIT Hyderabad (Old Boys/Girls)",
-                "phone_number": "+91 9849123015",
+                "username": "divya_deshmukh",
+                "email": "divya.d@vjti.ac.in",
+                "campus_name": "VJTI Mumbai (Hostel A)",
+                "phone_number": "+91 9769123401",
             },
             {
-                "username": "dev_mukherjee",
-                "email": "dev.m@vit.ac.in",
-                "campus_name": "VIT Vellore (Block D)",
-                "phone_number": "+91 9790123456",
+                "username": "tanmay_bhatia",
+                "email": "tanmay.b@thapar.edu",
+                "campus_name": "Thapar University (Hostel J)",
+                "phone_number": "+91 9872123512",
+            },
+            {
+                "username": "ishita_sen",
+                "email": "ishita.sen@ju.ac.in",
+                "campus_name": "Jadavpur University (Main Hostel)",
+                "phone_number": "+91 9830123623",
+            },
+            {
+                "username": "mohammed_faiz",
+                "email": "m.faiz@amu.ac.in",
+                "campus_name": "AMU Aligarh (Sir Syed Hall)",
+                "phone_number": "+91 9412123734",
             },
         ]
 
@@ -106,13 +176,37 @@ class Command(BaseCommand):
             u.save()
             created_users.append(u)
 
+        # Download & store curated photos in storage
+        self.stdout.write("Ensuring category images are cached in storage...")
+        stored_category_images = {}
+        for category, urls in CATEGORY_PHOTO_URLS.items():
+            stored_category_images[category] = []
+            for idx, url in enumerate(urls):
+                file_rel_path = f"listings/seed_{category.lower()}_{idx+1}.jpg"
+                try:
+                    if not default_storage.exists(file_rel_path):
+                        self.stdout.write(f"  Fetching photo for {category} [{idx+1}/{len(urls)}]...")
+                        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(req, timeout=10) as resp:
+                            img_data = resp.read()
+                        saved_path = default_storage.save(file_rel_path, ContentFile(img_data))
+                        stored_category_images[category].append(saved_path)
+                    else:
+                        stored_category_images[category].append(file_rel_path)
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"  Could not download {url}: {e}"))
+                    # Fallback path if already exists or empty
+                    stored_category_images[category].append(file_rel_path)
+
         # Clear existing listings to re-seed clean dataset
         self.stdout.write("Refreshing marketplace listings...")
         Listing.objects.all().delete()
 
-        # Database of 105 realistic student marketplace items
+        # Database of 100 realistic student marketplace items (10 per category)
         raw_items = [
-            # 1-25: TEXTBOOKS
+            # ==========================================
+            # 1. TEXTBOOKS (10 items)
+            # ==========================================
             (
                 "Higher Engineering Mathematics - B.S. Grewal (44th Ed)",
                 "Essential reference textbook for 1st & 2nd year Engineering Math. Clean pages with zero pen marks or tears. Meet at Central Library.",
@@ -129,126 +223,48 @@ class Command(BaseCommand):
                 "480.00", Category.TEXTBOOKS, CampusLocation.STUDENT_UNION, "Student Union Food Court Entrance", False
             ),
             (
-                "Fundamentals of Database Systems - Elmasri & Navathe (7th Ed)",
-                "Standard DBMS syllabus textbook. Includes SQL and relational algebra practice sets with solution appendix. Excellent condition.",
+                "Database System Concepts - Korth, Sudarshan & Silberschatz 7th Ed",
+                "Standard database management book for 5th semester DBMS lab. Includes relational algebra, SQL, indexing, and transaction processing.",
                 "520.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Central Library Circulation Desk", False
             ),
             (
-                "Computer Networking: A Top-Down Approach - Kurose & Ross",
-                "Used for Computer Networks course. Clear explanations of TCP/IP stack, DNS, socket programming, and security protocols.",
-                "550.00", Category.TEXTBOOKS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Main Gate", False
+                "Digital Design With an Introduction to Verilog HDL - M. Morris Mano",
+                "Required textbook for Digital Logic & Computer Organization course. Excellent condition with folded reference pinout charts.",
+                "380.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "ECE Hardware Lab 102", True
             ),
             (
-                "Concepts of Physics (Vol 1 & 2 Bundle) - Dr. H.C. Verma",
-                "Legendary physics books with solved conceptual questions. Perfect for engineering foundation and competitive exam revision.",
-                "380.00", Category.TEXTBOOKS, CampusLocation.MAIN_GATE, "Main Security Checkpost", False
-            ),
-            (
-                "Advanced Engineering Mathematics - Erwin Kreyszig (10th Ed)",
-                "Covers ODEs, linear algebra, vector calculus, Fourier analysis, and complex variables. International student edition.",
+                "Thomas' Calculus (14th Edition in SI Units)",
+                "Full calculus course text: multivariable calculus, vectors, line integrals, Stokes' Theorem. Binding intact with all page margins clean.",
                 "600.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Math Department Ground Floor", False
             ),
             (
-                "Signals and Systems - Alan V. Oppenheim & Alan S. Willsky",
-                "Required text for EE and ECE branches. Continuous-time and discrete-time signals, Fourier transforms, and Laplace domains.",
-                "490.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Central Library Periodicals Section", False
+                "Engineering Mechanics: Statics & Dynamics - Beer & Johnston (12th Ed)",
+                "Mechanical and Civil engineering foundational mechanics textbook with step-by-step free-body diagrams and solved practice sets.",
+                "550.00", Category.TEXTBOOKS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Main Gate", False
             ),
             (
-                "Electronic Devices and Circuit Theory - Boylestad & Nashelsky",
-                "11th Edition. Ideal for Analog Electronics labs and theory exams. Crisp binding with CD included.",
-                "420.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "ECE Hardware Lab 102", True
-            ),
-            (
-                "Modern Physical Metallurgy - R.E. Smallman & A.H.W. Ngan",
-                "Metallurgy & Materials Science core course book. Covers crystal structures, dislocations, phase diagrams, and heat treatment.",
-                "390.00", Category.TEXTBOOKS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Common Room", False
-            ),
-            (
-                "Indian Polity for Civil Services - M. Laxmikanth (7th Ed)",
-                "Latest updated edition with recent constitutional amendments. Bought for UPSC prep club. Neat marginal notes in pencil.",
+                "Computer Networks: A Top-Down Approach - Kurose & Ross (8th Ed)",
+                "Covers TCP/IP, DNS, socket programming, wireless networking, and network security. No missing pages, very neat condition.",
                 "580.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Library Garden Benches", False
-            ),
-            (
-                "Principles of Microeconomics - N. Gregory Mankiw (8th Ed)",
-                "Standard introductory economics textbook for MBA, B.Com, and Engineering Economics electives. Crisp condition.",
-                "460.00", Category.TEXTBOOKS, CampusLocation.STUDENT_UNION, "Student Union Atrium", False
-            ),
-            (
-                "Organic Chemistry - Morrison & Boyd (7th Edition)",
-                "Comprehensive reaction mechanisms and stereochemistry. Essential for Chemistry majors and chemical engineering.",
-                "490.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Chemistry Department Foyer", False
-            ),
-            (
-                "Mechanical Engineering Design - Joseph Shigley (11th Metric Ed)",
-                "Classic machine design manual. Covers stress analysis, fatigue strength, shafts, gears, bearings, and fasteners.",
-                "650.00", Category.TEXTBOOKS, CampusLocation.MAIN_GATE, "Main Gate Bus Stop", False
-            ),
-            (
-                "Principles of Compiler Design (Dragon Book) - Aho, Lam, Sethi, Ullman",
-                "Compilers 2nd Edition. Lexical analysis, parsing techniques, intermediate code generation, and optimization algorithms.",
-                "540.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Central Library 1st Floor Study Cubicles", False
-            ),
-            (
-                "Data Communications and Networking - Behrouz A. Forouzan",
-                "Fifth edition. Comprehensive diagrams explaining OSI model, Ethernet standards, and routing protocols. Brand new feel.",
-                "510.00", Category.TEXTBOOKS, CampusLocation.NORTH_QUAD_DORMS, "North Quad Mess Entrance", False
-            ),
-            (
-                "University Physics with Modern Physics - Young & Freedman (14th Ed)",
-                "Massive hardcover volume. Covers mechanics, thermodynamics, waves, optics, and quantum physics with end-of-chapter problems.",
-                "750.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Physics Lecture Hall Complex", False
-            ),
-            (
-                "Campbell Biology - Urry, Cain, Wasserman (12th Edition)",
-                "Authoritative reference for Biotechnology, Life Sciences, and pre-med courses. Full-color plates, zero damages.",
-                "890.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Biotechnology Block Porch", True
-            ),
-            (
-                "Structural Analysis - R.C. Hibbeler (9th SI Edition)",
-                "Civil Engineering must-have. Trusses, cables, shear moment diagrams, influence lines, and deflection calculation methods.",
-                "530.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
-            ),
-            (
-                "Design and Analysis of Algorithms - Sartaj Sahni",
-                "Computer algorithms in C++/Java. Divide-and-conquer, dynamic programming, greedy algorithms, and NP-completeness.",
-                "370.00", Category.TEXTBOOKS, CampusLocation.STUDENT_UNION, "SAC Amphitheatre", False
-            ),
-            (
-                "Engineering Electromagnetics - William Hayt & John Buck",
-                "8th Edition. Electrostatic fields, Maxwell's equations, plane waves, and transmission lines. Great for ECE 3rd semester.",
-                "420.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Electrical Machines Lab Foyer", False
-            ),
-            (
-                "Microelectronic Circuits - Sedra & Smith (7th International Ed)",
-                "MOSFETs, BJTs, operational amplifiers, and IC design. Bound with sturdy plastic protective jacket.",
-                "590.00", Category.TEXTBOOKS, CampusLocation.CENTRAL_LIBRARY, "Library Coffee Stall", False
-            ),
-            (
-                "A Modern Approach to Verbal & Non-Verbal Reasoning - R.S. Aggarwal",
-                "Popular aptitude and campus placement preparation book. Covers coding-decoding, blood relations, and syllogisms.",
-                "320.00", Category.TEXTBOOKS, CampusLocation.STUDENT_UNION, "Student Union 2nd Floor Lounge", False
-            ),
-            (
-                "Quantitative Aptitude for Competitive Examinations - R.S. Aggarwal",
-                "Indispensable guide for placement tests, CAT, and bank PO exams. All shortcuts and sample papers intact.",
-                "350.00", Category.TEXTBOOKS, CampusLocation.MAIN_GATE, "Main Security Checkpost", True
             ),
             (
                 "Control Systems Engineering - I.J. Nagrath & M. Gopal",
                 "Root locus, Bode plots, state-space equations, and Nyquist stability criteria. Perfect for Electrical and Instrumentation exams.",
                 "400.00", Category.TEXTBOOKS, CampusLocation.SCIENCE_BLOCK, "Instrumentation Wing Lobby", False
             ),
+            (
+                "GATE Computer Science & IT Topic-wise Solved Papers (Made Easy)",
+                "15 years topic-wise solved previous year question papers with detailed answer explanations. Perfect for final year GATE aspirants.",
+                "490.00", Category.TEXTBOOKS, CampusLocation.STUDENT_UNION, "Student Union Atrium", False
+            ),
 
-            # 26-47: ELECTRONICS
+            # ==========================================
+            # 2. ELECTRONICS (10 items)
+            # ==========================================
             (
                 "Casio fx-991EX ClassWiz Scientific Calculator",
                 "Original Casio calculator with high-res LCD and natural textbook display. Permitted in university semester exams and GATE.",
                 "850.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Central Library Security Desk", False
-            ),
-            (
-                "Casio fx-991CW Advanced Non-Programmable Calculator",
-                "Latest updated model with intuitive 4-gradation menu display and QR code function. 6 months old with protective slider case.",
-                "950.00", Category.ELECTRONICS, CampusLocation.SCIENCE_BLOCK, "Science Block Main Stairs", False
             ),
             (
                 "boAt Rockerz 450 Wireless Bluetooth Headphones",
@@ -263,95 +279,96 @@ class Command(BaseCommand):
             (
                 "Arduino Uno Rev3 Starter Kit with 35+ Sensors & Jumper Wires",
                 "Complete breadboard, ultrasonic sensor, LCD module, servo motor, LEDs, resistors, and USB cable. Used once for Mechatronics lab.",
-                "950.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Porch", False
+                "950.00", Category.ELECTRONICS, CampusLocation.SCIENCE_BLOCK, "Makerspace Workbench 3", False
             ),
             (
-                "Dell 24-inch Full HD IPS Monitor (75Hz, HDMI & VGA)",
-                "Crisp anti-glare display with ultra-thin bezels. Perfect secondary screen for coding and hostel room setup. Includes HDMI cable.",
-                "5200.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Room 218 Pickup", False
+                "SanDisk Ultra 128GB Dual Drive Go USB Type-C & Type-A",
+                "High-speed USB 3.1 flash drive with dual swivel connectors for transferring project files between Android smartphone and laptop.",
+                "650.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Common Room", False
             ),
             (
-                "Cosmic Byte CB-GK-16 Firefly Tenkeyless Mechanical Keyboard",
-                "RGB backlighting with Outemu Blue tactile switches. Great clicky feedback for long programming sessions. Well cleaned.",
-                "1250.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "Student Activity Center Lounge", True
+                "Logitech B170 Wireless Mouse (Ambidextrous 2.4GHz)",
+                "Reliable wireless optical mouse with 12-month battery life and mini USB nano receiver. Works smoothly on college dorm desks.",
+                "380.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Library Cyber Center Entrance", False
             ),
             (
-                "Logitech Pebble M350 Wireless Bluetooth Mouse (Silent Click)",
-                "Ultra-slim and quiet click buttons for silent study in library reading rooms. Dual connectivity via Bluetooth and 2.4GHz USB dongle.",
-                "750.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
-            ),
-            (
-                "SanDisk 1TB Extreme Portable External SSD (USB 3.2 Gen 2)",
-                "Read speeds up to 1050MB/s. Rugged water and dust-resistant casing. Used for backing up project datasets and virtual machines.",
-                "4800.00", Category.ELECTRONICS, CampusLocation.SCIENCE_BLOCK, "Computer Center Reception", False
-            ),
-            (
-                "Portronics 6-in-1 USB-C Hub (4K HDMI, 3x USB 3.0, PD 100W)",
-                "Aluminum unibody adapter compatible with MacBook, Dell XPS, and ThinkPad. Plug and play for classroom presentation projectors.",
-                "890.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "SAC Entrance", False
-            ),
-            (
-                "Mi 20000mAh 18W Fast Charging Power Bank 3i",
-                "Triple output ports with dual-way fast charging. Keeps phone and tablet charged during full-day campus classes.",
-                "1100.00", Category.ELECTRONICS, CampusLocation.MAIN_GATE, "Main Gate Auto Stand", False
-            ),
-            (
-                "Sony WH-CH520 Wireless Bluetooth Headphones (50-Hour Battery)",
-                "Beige color. DSEE sound enhancement and multi-point Bluetooth pairing. Lightest headphones for extended study playlists.",
-                "2400.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Central Library Cyber Cafe", False
-            ),
-            (
-                "TP-Link Archer C6 AC1200 Dual-Band Gigabit Wi-Fi Router",
-                "4 external antennas with MU-MIMO technology. Ideal for sharing high-speed hostel LAN connection across multiple room devices.",
-                "1350.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel Corridor 3rd Floor", False
-            ),
-            (
-                "One by Wacom Small Digital Pen Graphics Tablet (CTL-472)",
-                "Pressure-sensitive battery-free stylus. Perfect for taking handwritten digital notes in OneNote and drawing circuit schematics.",
-                "1600.00", Category.ELECTRONICS, CampusLocation.SCIENCE_BLOCK, "Design Lab Entrance", True
-            ),
-            (
-                "Logitech C270 HD 720p Webcam with Noise-Reducing Mic",
-                "Clear video and built-in microphone for virtual campus placement interviews, online viva exams, and hackathons.",
-                "1050.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "Student Union Meeting Room", False
-            ),
-            (
-                "Belkin 4-Socket Surge Protector Extension Board (2-Meter Cord)",
-                "Heavy-duty spike buster with master switch. Essential for charging laptop, monitor, and phone safely in old hostel wall sockets.",
-                "650.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Warden Office Steps", False
-            ),
-            (
-                "Noise ColorFit Pulse Grand Smartwatch (1.69-inch Display)",
-                "Heart rate monitor, SpO2 sensor, IP68 water resistant, and 60 sports modes. Includes original magnetic charging cable.",
-                "850.00", Category.ELECTRONICS, CampusLocation.SPORTS_COMPLEX, "Sports Complex Pavilion", False
-            ),
-            (
-                "Anker PowerLine+ USB-C to USB-C Fast Charging Cable (6ft Braided)",
-                "Durable double-braided nylon cable supporting 60W USB-PD charging and high-speed data transfer. No fraying.",
-                "450.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Library Lawn Entrance", False
-            ),
-            (
-                "Amazon Echo Dot (4th Gen) Smart Speaker with Alexa",
-                "Glacier white spherical design. Great for setting study timers, reminders, alarms, and playing study music in hostel rooms.",
-                "1700.00", Category.ELECTRONICS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gate", False
-            ),
-            (
-                "Seagate One Touch 2TB External Hard Drive (USB 3.0)",
-                "Compact brushed metal enclosure. Pre-formatted for Windows and Mac with password protection. Stores course lecture archives.",
-                "3600.00", Category.ELECTRONICS, CampusLocation.CENTRAL_LIBRARY, "Central Library Front Stairs", False
-            ),
-            (
-                "Zebronics Zeb-Transformer Gaming Keyboard & Mouse Combo",
-                "Braided cable, multi-color LED backlighting, integrated aluminum frame. Good tactile key travel.",
-                "650.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "SAC Gaming Area", True
+                "Portronics 6-in-1 USB-C Hub with HDMI 4K & PD 100W",
+                "Aluminum multi-port adapter with 4K HDMI, 3x USB 3.0 ports, SD card reader, and 100W Power Delivery pass-through.",
+                "1100.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "Student Union Tech Zone", False
             ),
             (
                 "Baseus 65W GaN3 Pro Desktop Fast Charger (2 USB-C + 2 USB-A)",
                 "Compact Gallium Nitride wall charger that powers a laptop and smartphone simultaneously. Eliminates bulky OEM power bricks.",
                 "1850.00", Category.ELECTRONICS, CampusLocation.SCIENCE_BLOCK, "Electrical Dept Gate", False
             ),
+            (
+                "Zebronics Zeb-Transformer Mechanical Feel Gaming Keyboard",
+                "Braided cable, multi-color LED backlighting, integrated aluminum frame. Good tactile key travel.",
+                "650.00", Category.ELECTRONICS, CampusLocation.STUDENT_UNION, "SAC Gaming Area", True
+            ),
+            (
+                "Anker PowerCore 20000mAh Power Bank with Dual Output",
+                "Ultra-high capacity portable charger with PowerIQ high-speed charging. Kept in backpack for long campus days and hackathons.",
+                "1600.00", Category.ELECTRONICS, CampusLocation.MAIN_GATE, "Main Campus Bus Stop", False
+            ),
 
-            # 48-63: LAB SUPPLIES & ENGINEERING EQUIPMENT
+            # ==========================================
+            # 3. DORM_LIVING (10 items)
+            # ==========================================
+            (
+                "Ergonomic Mesh Study Chair with Adjustable Lumbar Support",
+                "Breathable mesh backrest, pneumatic height adjustment lever, and 360-degree swivel nylon caster wheels. Highly comfortable.",
+                "1800.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Room 312 Pickup", False
+            ),
+            (
+                "Foldable Bed Laptop Table with Cup Holder & iPad Groove",
+                "Engineered wooden surface with non-slip curved metal legs. Perfect for studying on hostel beds or watching lectures.",
+                "380.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Main Porch", False
+            ),
+            (
+                "3-Tier Engineered Wood Bookshelf / Shoe Storage Rack",
+                "Compact vertical shelf (90cm height) that fits neatly next to standard hostel cupboards. Clean teak finish.",
+                "650.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "North Quad Quadrangle", False
+            ),
+            (
+                "Havells 1200mm High-Speed Table Fan with 3-Speed Settings",
+                "Aerodynamic PP blades, thermal overload protection, and smooth oscillation. A lifesaver during hot hostel summer months.",
+                "1100.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Reception", False
+            ),
+            (
+                "Pigeon 1.5-Liter Stainless Steel Electric Kettle",
+                "Auto shut-off protection and 360-degree swivel base. Quick boiling for hostel coffee, tea, and cup noodles during late-night studies.",
+                "420.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Corridor", False
+            ),
+            (
+                "Prestige 1200W Induction Cooktop with Indian Menu Presets",
+                "Automatic voltage regulator, anti-magnetic wall, and timer function. Ideal for cooking Maggi, chai, and quick meals in hostel rooms.",
+                "1350.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing A Pantry", False
+            ),
+            (
+                "Wakefit Orthopedic Memory Foam Single Bed Mattress (72x36)",
+                "High density foam with breathable removable zip cover. Fits standard hostel cot. Used for one semester, spotless and sanitized.",
+                "2800.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Wing B", True
+            ),
+            (
+                "Heavy-Duty Canvas Laundry Hamper with Aluminum Handles",
+                "Foldable 60L dirty clothes basket with water-resistant inner coating and padded handles. Great for weekly hostel laundry runs.",
+                "320.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Staircase Landing", False
+            ),
+            (
+                "Wipro 12W Smart LED Desk Lamp with 3 Color Temperatures",
+                "Flexible gooseneck arm with touch sensor controls and warm/neutral/cool white light settings for eye-friendly midnight reading.",
+                "680.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 11 Entrance", False
+            ),
+            (
+                "Collapsible 4-Shelf Wardrobe Hanging Organizer",
+                "Sturdy polyester fabric with reinforced fiberboards that hangs from any closet rod. Adds vertical storage for folded t-shirts.",
+                "280.00", Category.DORM_LIVING, CampusLocation.STUDENT_UNION, "SAC Laundry Dropoff", False
+            ),
+
+            # ==========================================
+            # 4. STATIONERY (10 items)
+            # ==========================================
             (
                 "Omega Deluxe Mini Drafter for Engineering Drawing",
                 "Steel rods with unbreakable scale and clamp. Includes sturdy black canvas carrying bag. Mandatory for 1st-year graphics lab.",
@@ -373,139 +390,39 @@ class Command(BaseCommand):
                 "350.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "EE Hardware Workshop", False
             ),
             (
-                "Engineering Drawing Instrument Box (Compass, Divider, Leads)",
-                "Camlin high-precision technical drawing compass set with extension arm and ink attachments. Clean metal joints.",
-                "220.00", Category.STATIONERY, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
+                "Rotary Cutter & A2 Self-Healing Cutting Mat for Architecture",
+                "Professional 5-ply PVC double-sided cutting mat with grid lines and 45mm rotary cutter with spare blades for physical model making.",
+                "480.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Architecture Studio 2", False
             ),
             (
-                "Borosil Borosilicate Chemistry Lab Glassware Assortment",
-                "Includes 250ml conical flask, 500ml beaker, 100ml measuring cylinder, and 2 watch glasses. Heat-resistant borosilicate glass.",
-                "400.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Chemical Engineering Workshop", False
-            ),
-            (
-                "Soldering Iron Kit (60W Adjustable Temp with Stand & Solder Wire)",
-                "Features ceramic heating core (200°C to 450°C), desoldering pump, tweezers, and lead-free solder wire spool.",
-                "480.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Electronics Club Workshop", True
-            ),
-            (
-                "Roller Scale & French Curves Set for Engineering Graphics",
-                "30cm rolling ruler with built-in protractor and 3-piece acrylic French curves set. Essential for smooth curve plotting.",
-                "120.00", Category.STATIONERY, CampusLocation.STUDENT_UNION, "SAC Stationery Counter", False
-            ),
-            (
-                "Mitutoyo Style 150mm Stainless Steel Vernier Caliper (0.02mm Accuracy)",
-                "Precision dual-scale metric and imperial vernier caliper with locking screw for Mechanical workshop measurements.",
-                "390.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Mechanical Workshop Fitting Shop", False
-            ),
-            (
-                "Pack of 3 Solderless Breadboards (830 Tie-Points Each) + 130 Jumpers",
-                "High quality breadboards with power rails and multi-colored male-to-male and male-to-female flexible jumper cables.",
-                "300.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Digital Electronics Lab", False
-            ),
-            (
-                "Chemical Splash Protective Safety Goggles (Anti-Fog, Clear)",
-                "Soft PVC frame with indirect ventilation and adjustable head strap. Meets OSHA lab safety requirements.",
-                "140.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Safety Office Lobby", False
-            ),
-            (
-                "A2 Size Technical Drafting Board with Stand Clamps",
-                "Smooth pine wood drawing board (65cm x 47cm) with beveled working edge. Great for drafting practice in hostel rooms.",
-                "480.00", Category.STATIONERY, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Ground Floor", False
-            ),
-            (
-                "Digital Vernier Height Gauge & Micrometer Screw Gauge (0-25mm)",
-                "Workshop practice tools with ratchet stop and carbide tipped measuring faces. Includes wooden storage case.",
+                "Staedtler Mars 7-Piece Technical Drawing Compass Set",
+                "Precision quick-setting compass with extension bar, universal adapter, and lead box. German engineered for engineering graphics.",
                 "520.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Metrology Lab 104", False
             ),
             (
-                "Microscope Prepared Slides Box (50 Botanical & Zoology Specimens)",
-                "Optically clear glass slides with cedarwood oil immersion covers. Covers mitosis, plant tissues, and bacterial cultures.",
-                "420.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Bio Sciences Building Atrium", False
+                "Classmate Pulse Spiral Binding Notebooks Pack of 6",
+                "Pack of 6 unruled 300-page single subject notebooks with perforated paper and water-repellent poly covers. Brand new and sealed.",
+                "340.00", Category.STATIONERY, CampusLocation.STUDENT_UNION, "SAC Stationery Counter", False
             ),
             (
-                "Component Storage Organizer Box (30 Transparent Drawers)",
-                "Plastic cabinet for sorting resistors, capacitors, ICs, and small screws on project desks. Clean and crack-free.",
-                "380.00", Category.STATIONERY, CampusLocation.STUDENT_UNION, "SAC Makerspace", True
+                "Uni-ball Eye Rollerball Pens (Set of 5 - Blue & Black 0.5mm)",
+                "Waterproof fade-proof Uni Super Ink with smooth stainless steel tip. Preferred pen for semester theory examination writing.",
+                "260.00", Category.STATIONERY, CampusLocation.CENTRAL_LIBRARY, "Central Library Porch", False
             ),
             (
-                "Clinical Thermometer & Stethoscope Combo (Nurse/Med Student Grade)",
+                "Clinical Thermometer & Stethoscope Combo (Nurse/Med Grade)",
                 "Dual-head acoustic stethoscope with soft silicone ear tips and digital waterproof thermometer. Ideal for MBBS clinical postings.",
                 "650.00", Category.STATIONERY, CampusLocation.MAIN_GATE, "Health Center Reception", False
             ),
-
-            # 64-77: FURNITURE & HOSTEL LIVING
             (
-                "Ergonomic Mesh Study Chair with Adjustable Lumbar Support",
-                "Breathable mesh backrest, pneumatic height adjustment lever, and 360-degree swivel nylon caster wheels. Highly comfortable.",
-                "1800.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Room 312 Pickup", False
-            ),
-            (
-                "Foldable Bed Laptop Table with Cup Holder & iPad Groove",
-                "Engineered wooden surface with non-slip curved metal legs. Perfect for studying on hostel beds or watching lectures.",
-                "380.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Main Porch", False
-            ),
-            (
-                "3-Tier Engineered Wood Bookshelf / Shoe Storage Rack",
-                "Compact vertical shelf (90cm height) that fits neatly next to standard hostel cupboards. Clean teak finish.",
-                "650.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "North Quad Quadrangle", False
-            ),
-            (
-                "Sleepwell 4-inch Single Bed Foam Mattress (6x3 ft)",
-                "High density orthopedic foam mattress. Kept inside waterproof protective cover since day one. Must be picked up from hostel room.",
-                "1400.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Wing B", True
-            ),
-            (
-                "Nilkamal Heavy Duty Plastic Armchair (Set of 2)",
-                "Sturdy weather-proof brown plastic chairs. Great for extra hostel room seating during group study sessions.",
-                "550.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel Mess Courtyard", False
-            ),
-            (
-                "Clip-On LED Desk Lamp with 3 Color Modes & Touch Dimmer",
-                "Flexible gooseneck clamp light with USB rechargeable battery. Clamp it to bed rail or desk for late-night exam prep.",
-                "340.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Gate", False
-            ),
-            (
-                "Havells 400mm 3-Blade High-Speed Table Fan",
-                "Powerful air delivery with smooth oscillation and copper motor. Saves you during hot summer semester exam months.",
-                "1100.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Reception", False
-            ),
-            (
-                "Collapsible Wardrobe Clothes Organizer with Dust Cover",
-                "Steel pipe frame with non-woven fabric zipped cover and side shoe pockets. Disassembles easily into a compact box.",
-                "680.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 11 Entrance", False
-            ),
-            (
-                "Floor Standing Full-Length Mirror with Wooden Easel Stand",
-                "Crisp distortion-free 150cm mirror. Great for getting ready for campus presentations and placement interviews.",
-                "650.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Front Desk", False
-            ),
-            (
-                "Heavy-Duty Metal 4-Tier Shoe Rack (Holds 12 Pairs)",
-                "Rust-resistant black powder-coated steel tubes. Keeps room footwear organized outside hostel room doorway.",
-                "320.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Staircase Landing", False
-            ),
-            (
-                "Single Bed Cotton Mattress Topper & Bedcover Set",
-                "Quilted microfiber mattress topper with 2 fitted cotton bedsheets and 2 matching pillowcases. Freshly laundered.",
-                "450.00", Category.DORM_LIVING, CampusLocation.STUDENT_UNION, "SAC Laundry Dropoff", False
-            ),
-            (
-                "Adjustable Height Laptop Riser / Stand (Aluminum Foldable)",
-                "Ergonomic angled laptop stand with silicone grips and ventilation hollows to prevent laptop overheating during compiling.",
-                "420.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Atrium", False
-            ),
-            (
-                "Cushioned Hostel Bean Bag (Size XXL - Black Leatherette)",
-                "Comfortable filled bean bag for reading and relaxing in hostel rooms. Double stitched with child-safe safety zipper.",
-                "850.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Common Room", True
-            ),
-            (
-                "Multi-Tier Rolling Utility Cart with Lockable Wheels",
-                "Mesh metal baskets for storing textbooks, stationery, snacks, and toiletries next to study table.",
-                "750.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing C", False
+                "Koh-I-Noor Technical Drafting Pen Set 0.2 to 0.8mm",
+                "Waterproof pigmented archival black ink technical drafting pens. Great for maps, architectural drawings, and detailed sketches.",
+                "490.00", Category.STATIONERY, CampusLocation.SCIENCE_BLOCK, "Civil Engineering CAD Lab", True
             ),
 
-            # 78-87: CLOTHING & ACCESSORIES
+            # ==========================================
+            # 5. FASHION (10 items)
+            # ==========================================
             (
                 "Official College Techfest Heavyweight Fleece Hoodie (Unisex XL)",
                 "Warm dark navy blue pullover hoodie with brushed fleece lining and kangaroo pocket. Only worn during winter fest.",
@@ -522,9 +439,9 @@ class Command(BaseCommand):
                 "1500.00", Category.FASHION, CampusLocation.STUDENT_UNION, "Placement Cell Waiting Hall", False
             ),
             (
-                "Decathlon Quechua Windproof Water-Repellent Hiking Jacket (Size L)",
-                "Breathable lightweight outdoor shell jacket with adjustable hood. Excellent for winter morning campus bicycle commutes.",
-                "790.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Sports Complex Main Gate", False
+                "Women's Single-Breasted Navy Formal Interview Blazer (Size M)",
+                "Crease-resistant formal jacket with notched lapel and structured shoulders. Ideal for placement drives and conference presentations.",
+                "1400.00", Category.FASHION, CampusLocation.STUDENT_UNION, "SAC Placement Office", False
             ),
             (
                 "Formal Silk Placement Tie & Silver Cufflinks Set",
@@ -537,103 +454,249 @@ class Command(BaseCommand):
                 "550.00", Category.FASHION, CampusLocation.MAIN_GATE, "Main Gate Metro Footbridge", False
             ),
             (
-                "Woodland Waterproof Leather Outdoor Boots (UK Size 8)",
-                "Rugged nubuck leather with rubber lug soles. Great for college trips, monsoons, and rough terrain.",
-                "1400.00", Category.FASHION, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gate", False
-            ),
-            (
                 "Traditional Embroidered Kurta Set for Cultural Fests (Size 38)",
                 "Rich cotton silk fabric in maroon with subtle thread embroidery. Ideal for Diwali, ethnic day, and graduation celebrations.",
                 "650.00", Category.FASHION, CampusLocation.STUDENT_UNION, "Cultural Club Room", False
+            ),
+            (
+                "Campus Casual White Street Sneakers (UK 8 / EU 42)",
+                "Classic low-top white sneakers with memory foam insole and vulcanized rubber sole. Worn casually around campus.",
+                "790.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Sports Complex Main Gate", False
+            ),
+            (
+                "Decathlon Quechua Windproof Water-Repellent Hiking Jacket (Size L)",
+                "Breathable lightweight outdoor shell jacket with adjustable hood. Excellent for winter morning campus bicycle commutes.",
+                "790.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Track & Field Bleachers", False
             ),
             (
                 "American Tourister 20-inch Cabin Trolley Luggage (Hardcase)",
                 "4-wheel 360 degree spinner suitcase with TSA lock. Perfect for carrying semester luggage on domestic flights and trains.",
                 "1850.00", Category.FASHION, CampusLocation.MAIN_GATE, "Main Security Gate", False
             ),
+
+            # ==========================================
+            # 6. BICYCLES_COMMUTE (10 items)
+            # ==========================================
             (
-                "Campus Sports Tracksuit (Jacket & Track Pants - Size M)",
-                "Quick-dry moisture-wicking fabric with zippered pockets. Worn for inter-hostel football tournament practices.",
-                "500.00", Category.FASHION, CampusLocation.SPORTS_COMPLEX, "Track & Field Bleachers", False
+                "Hercules Roadeo Hardtail 26T Bicycle with Front Disc Brakes",
+                "Sturdy steel frame, 26-inch wheels with wide tires, and comfortable saddle. Moving out after final semester, priced to sell.",
+                "2900.00", Category.BICYCLES_COMMUTE, CampusLocation.MAIN_GATE, "Main Campus Bicycle Parking", False
+            ),
+            (
+                "Hero Sprint Pro 21-Speed Hybrid Commuter Cycle (27.5T)",
+                "Lightweight alloy frame, Shimano Tourney 21-speed gears, front suspension fork, and double-walled alloy rims. Smooth daily ride.",
+                "3400.00", Category.BICYCLES_COMMUTE, CampusLocation.MAIN_GATE, "Hostel Cycle Stand Wing B", False
+            ),
+            (
+                "Heavy Duty Hardened Steel U-Lock with 4-Digit Combination",
+                "Thick 14mm cut-resistant shackle with dust cover. Zero risk of cycle theft from campus cycle stands. Reset code easily.",
+                "450.00", Category.BICYCLES_COMMUTE, CampusLocation.CENTRAL_LIBRARY, "Central Library Bike Racks", False
+            ),
+            (
+                "Oxford Coiled Bike Cable Lock with 2 Brass Keys",
+                "1.8-meter flexible steel braided cable coated with protective vinyl. Long enough to lock both frame and front wheel to bike rail.",
+                "280.00", Category.BICYCLES_COMMUTE, CampusLocation.SCIENCE_BLOCK, "Science Block Bicycle Shed", False
+            ),
+            (
+                "Studds Urban Cycling Helmet with Adjustable Dial (Size M)",
+                "Aerodynamic EPS foam shell with washable moisture-wicking pads and quick-release chin strap. Essential for campus main road riding.",
+                "550.00", Category.BICYCLES_COMMUTE, CampusLocation.SPORTS_COMPLEX, "Gym Cycle Stand", False
+            ),
+            (
+                "Rechargeable LED Bicycle Headlight & Taillight Set (USB-C)",
+                "Super bright 400 lumens front light with 4 lighting modes and IPX4 waterproof silicone rear red strobe. USB-C rechargeable.",
+                "380.00", Category.BICYCLES_COMMUTE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Entrance", True
+            ),
+            (
+                "Oxelo 28-inch Maple Wood Cruiser Skateboard with PU Wheels",
+                "7-ply Canadian maple deck with 59mm 78A soft cruiser wheels and ABEC-7 bearings. Fast and fun way to get between hostel and lectures.",
+                "1200.00", Category.BICYCLES_COMMUTE, CampusLocation.STUDENT_UNION, "SAC Open Plaza", False
+            ),
+            (
+                "Detachable Wire Front Bicycle Basket with Quick-Release Mount",
+                "Rust-proof black mesh basket with carry handle. Clicks off in one second to carry college bag or lunchbox into lecture halls.",
+                "290.00", Category.BICYCLES_COMMUTE, CampusLocation.CENTRAL_LIBRARY, "Library East Porch", False
+            ),
+            (
+                "Giyo High-Pressure Mini Bicycle Hand Pump with Gauge",
+                "Compatible with both Presta and Schrader valves. Pumps up to 120 PSI with built-in pressure gauge. Mounts on bike water bottle cage.",
+                "420.00", Category.BICYCLES_COMMUTE, CampusLocation.MAIN_GATE, "Campus Cycle Repair Kiosk", False
+            ),
+            (
+                "Waterproof Bicycle Saddle Bag with Reflective Strip",
+                "Compact under-seat wedge pouch with mesh compartments for keys, spare tube, multi-tool, and phone. Tear-resistant ripstop nylon.",
+                "320.00", Category.BICYCLES_COMMUTE, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Bike Shed", False
             ),
 
-            # 88-95: HOUSING & SUBLETS
+            # ==========================================
+            # 7. SPORTS_FITNESS (10 items)
+            # ==========================================
             (
-                "Single Occupancy AC Room in 3BHK Flat near North Campus Metro Gate 2",
-                "Fully furnished single bedroom with AC, wardrobe, study desk, 200Mbps Wi-Fi, washing machine, and maid service included. Sublet for spring semester.",
-                "7500.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Metro Station Gate 2 Meetup", False
+                "Kore 20kg Adjustable Home/Hostel Dumbbell & Barbell Gym Kit",
+                "Includes 4x 2kg, 4x 3kg plates, 2 dumbbell rods, spinlock collars, gym gloves, and skipping rope for room workouts.",
+                "1150.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Campus Gym Entrance", False
             ),
             (
-                "Double Sharing Furnished PG Room with 3 Meals & Wi-Fi near South Campus",
-                "Includes RO drinking water, power backup, daily housekeeping, and hot water geyser. Walking distance from university bus stop.",
-                "5500.00", Category.DORM_LIVING, CampusLocation.STUDENT_UNION, "SAC Front Steps", False
+                "SS Master 1000 Kashmir Willow Cricket Bat with Padded Cover",
+                "Thick edges, curved blade, short cane handle with chevron rubber grip. Perfect for inter-department tape-ball and leather-ball matches.",
+                "1250.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Cricket Ground Pavilion", False
             ),
             (
-                "Summer Internship Sublet: Private Room in 2BHK Flat near Powai IIT Main Gate",
-                "Available May to July for summer interns and research assistants. AC, modular kitchen, refrigerator, and gym access.",
-                "8500.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "IIT Powai Main Gate Checkpost", False
-            ),
-            (
-                "Studio Apartment Sublet for Monsoon Semester (Fully Furnished, Power Backup)",
-                "Private kitchenette, attached washroom, balcony with green campus view. Ideal for PhD scholars or final year project pairs.",
-                "9500.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Central Library Parking Area", True
-            ),
-            (
-                "Shared 2BHK Flat Lease Transfer near Knowledge Park / Campus Outer Gate",
-                "Spacious hall, 2 bathrooms, gated society with 24x7 security guards and grocery stores on campus boundary.",
-                "6000.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Campus Outer Security Gate", False
-            ),
-            (
-                "Furnished Master Bedroom Sublet in 3BHK with Attached Washroom & Balcony",
-                "King bed, split AC, modular wardrobes, and high-speed fiber internet. Roommate is an easy-going 4th year student.",
-                "8000.00", Category.DORM_LIVING, CampusLocation.NORTH_QUAD_DORMS, "Hostel Visitors Gate", False
-            ),
-            (
-                "Single Bed in Air-Conditioned PG near Tech Park / College Campus",
-                "Includes morning breakfast and dinner. Laundry facility available. Low deposit of 1 month only.",
-                "4800.00", Category.DORM_LIVING, CampusLocation.MAIN_GATE, "Main Gate Visitors Desk", False
-            ),
-            (
-                "Spacious 1RK Flat Sublet for Winter Semester near University Law Faculty",
-                "Furnished with double bed, study table, refrigerator, and induction stove. Very quiet residential street.",
-                "6200.00", Category.DORM_LIVING, CampusLocation.CENTRAL_LIBRARY, "Law Faculty Library Gate", False
-            ),
-
-            # 96-105: OTHER (SPORTS, INSTRUMENTS, APPLIANCES & HOSTEL GADGETS)
-            (
-                "Yonex Nanoray 7000I Badminton Racket with Full Cover & Shuttles",
-                "Lightweight isometric graphite frame (77g) strung at 24 lbs. Includes 3 Mavis 350 nylon shuttlecocks. Used for hostel tournaments.",
-                "1100.00", Category.OTHER, CampusLocation.SPORTS_COMPLEX, "Indoor Badminton Court 2", False
-            ),
-            (
-                "Hero Sprint 21-Speed Mountain Bicycle with Lock & Helmet",
-                "Dual disc brakes, front suspension fork, and Shimano gear shifters. Best way to commute between hostels and academic blocks.",
-                "3600.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Bicycle Stand", False
-            ),
-            (
-                "Yamaha F310 Acoustic Guitar with Padded Gig Bag & Capo",
-                "Traditional Western body with spruce top and rosewood fretboard. Warm balanced tone, low action, newly strung with D'Addario strings.",
-                "4500.00", Category.OTHER, CampusLocation.STUDENT_UNION, "Music Club Room", True
-            ),
-            (
-                "Prestige PIC 20 1600W Induction Cooktop with Indian Menu Presets",
-                "Automatic voltage regulator, anti-magnetic wall, and timer function. Ideal for cooking Maggi, chai, and quick meals in hostel rooms.",
-                "1350.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing A Pantry", False
-            ),
-            (
-                "Pigeon 1.5-Liter Stainless Steel Electric Kettle",
-                "Auto shut-off protection and 360-degree swivel base. Quick boiling for hostel coffee, tea, and cup noodles during late-night studies.",
-                "420.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Corridor", False
+                "Yonex Nanoray 18i Light Graphite Badminton Racket (77g)",
+                "Isometric head shape with high-tension pre-strung BG65 string (24 lbs) and full racket cover. Ultra-light and speedy for court games.",
+                "1400.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Indoor Badminton Court 2", False
             ),
             (
                 "Nivia Storm Football (Size 5 FIFA Standard) with Hand Pump",
                 "Rubber molded outer shell suitable for rough campus ground and turf matches. Holds air pressure perfectly.",
-                "320.00", Category.OTHER, CampusLocation.SPORTS_COMPLEX, "Football Field Pavilions", False
+                "320.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Football Field Pavilions", False
             ),
             (
-                "Kore 20kg Adjustable Home/Hostel Dumbbell & Barbell Gym Kit",
-                "Includes 4x 2kg, 4x 3kg plates, 2 dumbbell rods, spinlock collars, gym gloves, and skipping rope for room workouts.",
-                "1150.00", Category.OTHER, CampusLocation.SPORTS_COMPLEX, "Campus Gym Entrance", False
+                "Nivia Heavy-Duty Basketball (Size 7 Rubber Composite)",
+                "Deep channel design with durable pebbled grip for outdoor concrete campus basketball courts. Comes with needle and net.",
+                "420.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Basketball Court Bleachers", False
+            ),
+            (
+                "Boldfit 6mm Non-Slip TPE Exercise & Yoga Mat with Carry Strap",
+                "Dual-texture anti-skid surface with thick joint cushioning. Eco-friendly, sweat-resistant, and rolls up neatly for hostel storage.",
+                "550.00", Category.SPORTS_FITNESS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Yoga Lawn", False
+            ),
+            (
+                "Set of 5 Resistance Loop Bands with Door Anchor & Exercise Guide",
+                "Latex resistance bands ranging from X-Light (5 lbs) to X-Heavy (30 lbs). Excellent for calisthenics, warmups, and hostel workouts.",
+                "380.00", Category.SPORTS_FITNESS, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gym Room", True
+            ),
+            (
+                "Cosco High-Bounce Tennis Balls (Pack of 3 Pressure Cans)",
+                "Durable interlocked wool fiber cover suitable for campus tennis courts and hostel corridor cricket matches. Unopened fresh cans.",
+                "280.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Tennis Courts Gate", False
+            ),
+            (
+                "Vector X Leather Gym Workout Gloves with Integrated Wrist Wraps",
+                "Padded palm protection to prevent calluses during pull-ups and heavy bench presses. Breathable mesh back with velcro closure.",
+                "260.00", Category.SPORTS_FITNESS, CampusLocation.SPORTS_COMPLEX, "Weightlifting Section", False
+            ),
+            (
+                "Prolite 750ml Stainless Steel Protein Shaker Bottle with Wire Whisk",
+                "BPA-free leakproof flip cap with surgical steel blender ball. Mixes whey protein, pre-workout, and electrolyte powders smoothly.",
+                "320.00", Category.SPORTS_FITNESS, CampusLocation.STUDENT_UNION, "SAC Juice Bar", False
+            ),
+
+            # ==========================================
+            # 8. ENTERTAINMENT (10 items)
+            # ==========================================
+            (
+                "Yamaha F280 Acoustic Guitar with Padded Gig Bag & Capo",
+                "Rosewood fretboard, natural gloss spruce top, warm resonant tone. New D'Addario strings fitted. Ideal for music club and hostel jams.",
+                "4500.00", Category.ENTERTAINMENT, CampusLocation.STUDENT_UNION, "Music Club Room in SAC", False
+            ),
+            (
+                "Juarez 21-inch Soprano Ukulele with Nylon Strings & Gig Bag",
+                "Hawaiian solid linden wood body with geared tuning pegs. Easy to learn four-string instrument for relaxing between study sessions.",
+                "1100.00", Category.ENTERTAINMENT, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Common Room", False
+            ),
+            (
+                "Sony DualShock 4 Wireless Controller for PS4 & PC (Midnight Blue)",
+                "Precision analog sticks, responsive triggers, and clickable touchpad. Connects via Bluetooth to gaming laptop or PlayStation console.",
+                "1950.00", Category.ENTERTAINMENT, CampusLocation.STUDENT_UNION, "SAC Gaming Lounge", True
+            ),
+            (
+                "International Tournament Wooden Chess Set with Weighted Pieces",
+                "Solid sheesham wood folding board (14x14 inch) with carved Staunton pieces and green felt bottom. Great for hostel game nights.",
+                "750.00", Category.ENTERTAINMENT, CampusLocation.STUDENT_UNION, "Chess Club Corner in SAC", False
+            ),
+            (
+                "Catan Board Game (English 5th Edition Complete Box)",
+                "The classic strategy trade-and-build board game. All 19 terrain hexes, dice, cards, and wooden settlements intact and organized.",
+                "1600.00", Category.ENTERTAINMENT, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Rec Room", False
+            ),
+            (
+                "Scrabble Deluxe Edition with Rotating Turntable Grid",
+                "Classic crossword word game with rotating board and raised tile lock grid. 100 letter tiles and wooden tile racks included.",
+                "650.00", Category.ENTERTAINMENT, CampusLocation.CENTRAL_LIBRARY, "Library Discussion Room 3", False
+            ),
+            (
+                "Monopoly Deal Card Game & UNO Flip Combo Pack",
+                "Fast-paced 15-minute card versions of favorite family games. Perfect travel and hostel night entertainment. Cards in mint condition.",
+                "240.00", Category.ENTERTAINMENT, CampusLocation.STUDENT_UNION, "SAC Cafeteria Benches", False
+            ),
+            (
+                "Rubik's Connected 3x3 Smart Speed Cube (Bluetooth Tracker)",
+                "Magnetic speed cube with motion sensors that syncs with free mobile app to teach algorithms, track solve speeds, and battle online.",
+                "950.00", Category.ENTERTAINMENT, CampusLocation.SCIENCE_BLOCK, "CS Lounge", False
+            ),
+            (
+                "Harry Potter 7-Book Complete Boxed Collection (Paperback)",
+                "J.K. Rowling's full 7-volume series in decorative slipcase box. All books in clean readable condition with no torn spines.",
+                "1250.00", Category.ENTERTAINMENT, CampusLocation.CENTRAL_LIBRARY, "Central Library Fiction Wing", False
+            ),
+            (
+                "JBL Go 3 Portable Waterproof Bluetooth Speaker (Teal)",
+                "Pro sound with punchy bass in an ultra-compact rugged fabric body. IP67 waterproof and dustproof with 5 hours continuous playback.",
+                "1800.00", Category.ENTERTAINMENT, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Quadrangle", False
+            ),
+
+            # ==========================================
+            # 9. LOST_AND_FOUND (10 items)
+            # ==========================================
+            (
+                "[FOUND] Navy Blue Milton Thermosteel 1000ml Bottle at Library",
+                "Found on 2nd floor study carrel desk #42 on Wednesday evening. Has a small NASA sticker on the side. Claim with librarian.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.CENTRAL_LIBRARY, "Central Library Circulation Desk", False
+            ),
+            (
+                "[LOST] Student ID Card with Blue College Lanyard & Hostel Key",
+                "Lost near Student Union food court around 2 PM yesterday. Name on card is Priya Sharma, Roll #210103042. Reward for return!",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.STUDENT_UNION, "SAC Lost & Found Kiosk", False
+            ),
+            (
+                "[FOUND] Casio Vintage Digital Watch (Silver Mesh Strap)",
+                "Found in Science Block Lecture Hall 1 under row 4 seats after 11 AM Physics lecture. Clean working condition.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.SCIENCE_BLOCK, "Physics Dept Office", False
+            ),
+            (
+                "[FOUND] Black Automatic Folding Rain Umbrella in Room 204",
+                "Sturdy windproof umbrella with wooden curved handle forgotten after rainy afternoon tutorial class. Deposited with room attender.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.SCIENCE_BLOCK, "Lecture Hall 204 Podium", False
+            ),
+            (
+                "[LOST] Ray-Ban Prescription Glasses in Black Hard Case",
+                "Black rectangular metal frame spectacles left on library ground floor periodicals table. Greatly needed for upcoming exams.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.CENTRAL_LIBRARY, "Library Reception Desk", False
+            ),
+            (
+                "[FOUND] Set of 3 Keys with Royal Enfield Leather Keychain",
+                "Found near Main Campus Gate cycle stand on concrete divider. Includes two bike keys and one small Godrej padlock key.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.MAIN_GATE, "Main Security Checkpost", False
+            ),
+            (
+                "[LOST] Blue Spiral Chemistry Lecture Notes Notebook",
+                "Thick 200-page notebook with hand-drawn organic chemistry reaction mechanisms and lab diagrams. Left near Chemistry lab.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.SCIENCE_BLOCK, "Chemistry Department Foyer", False
+            ),
+            (
+                "[FOUND] boAt Airdopes Charging Case (Midnight Black) in Audi",
+                "Found charging case on seat row F in the main auditorium after orientation session. Earbuds were missing inside.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.STUDENT_UNION, "Auditorium Control Booth", False
+            ),
+            (
+                "[FOUND] Scientific Calculator Casio fx-991CW left in LH-1",
+                "Found on desktop in LH-1 following the morning Mathematics midterm test. Has initial 'A.K.' marked with silver marker on back.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.SCIENCE_BLOCK, "Maths Department Notice Board", False
+            ),
+            (
+                "[LOST] Red Titan Fastrack Leather Wallet near Main Gate",
+                "Dropped between bus stop and campus entry gate. Contains college bus pass, metro smart card, and student photo ID.",
+                "0.00", Category.LOST_AND_FOUND, CampusLocation.MAIN_GATE, "Main Gate Guard Room", False
+            ),
+
+            # ==========================================
+            # 10. OTHER (10 items)
+            # ==========================================
+            (
+                "Anchor 4-Socket Spike Guard Extension Board with 2m Cord",
+                "Surge protected multi-plug extension strip with individual LED master switches. Essential for powering study setup in hostel.",
+                "350.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Reception", False
             ),
             (
                 "Milton Thermosteel 1000ml Insulated Water Bottle (24hr Hot/Cold)",
@@ -641,28 +704,64 @@ class Command(BaseCommand):
                 "450.00", Category.OTHER, CampusLocation.CENTRAL_LIBRARY, "Central Library Water Cooler Area", False
             ),
             (
-                "International Tournament Wooden Chess Set with Weighted Pieces",
-                "Solid sheesham wood folding board (14x14 inch) with carved Staunton pieces and green felt bottom. Great for hostel game nights.",
-                "750.00", Category.OTHER, CampusLocation.STUDENT_UNION, "Chess Club Corner in SAC", False
+                "Wipro 3-in-1 Multi-Tool Rechargeable Emergency Study Lantern",
+                "Bright emergency LED lantern with built-in USB power bank output and solar panel charging. Useful during power outages.",
+                "420.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 12 Gate", False
             ),
             (
-                "Hercules Roadeo Hardtail Bicycle with Front Disc Brakes",
-                "Sturdy steel frame, 26-inch wheels with wide tires, and comfortable saddle. Moving out after final semester, priced to sell.",
-                "2900.00", Category.OTHER, CampusLocation.MAIN_GATE, "Main Campus Bicycle Parking", False
+                "Compact 2-Tier Stainless Steel Dish & Mug Drying Rack",
+                "Rust-proof chrome finish wire rack with removable water drip tray. Organizes hostel plates, coffee mugs, and cutlery cleanly.",
+                "380.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel Mess Courtyard", False
+            ),
+            (
+                "Stanley 12-Piece Hand Tool & Screwdriver Repair Kit",
+                "Includes magnetic bit screwdriver, precision jewelers screwdrivers, pliers, utility knife, and tape measure in durable blow mold case.",
+                "550.00", Category.OTHER, CampusLocation.SCIENCE_BLOCK, "Makerspace Tool Wall", False
+            ),
+            (
+                "Mosquito Bat Killer Racket with USB Charging Dock",
+                "3-layer safety protective electric mesh net with built-in purple UV light attractant and rechargeable battery. Very effective in dorm.",
+                "280.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 14 Entrance", False
+            ),
+            (
+                "Portable Compact Garment Steamer for Clothes (800W)",
+                "Quick 30-second heat-up handheld steamer with 200ml water tank. Removes wrinkles from placement shirts and kurtas effortlessly.",
+                "850.00", Category.OTHER, CampusLocation.STUDENT_UNION, "Placement Cell Foyer", False
+            ),
+            (
+                "Multipurpose Storage Crates & Plastic Organizers (Set of 3)",
+                "Heavy-duty stackable translucent plastic storage containers with clip-on lock lids. Great for organizing cables, notes, and snacks.",
+                "320.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Wing C", False
+            ),
+            (
+                "Water Filter Pitcher (3.5L) with 2 Activated Carbon Filters",
+                "Reduces chlorine, odor, and heavy metals from campus tap water. Fits into mini fridge or dorm table. Clean and hygienic.",
+                "750.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 11 Wing A", False
+            ),
+            (
+                "Heavy Duty Metal Clothes Drying Stand (Foldable Wing Style)",
+                "Powder-coated steel drying rack with 45 feet of hanging line space. Folds flat to store behind hostel room door when not in use.",
+                "890.00", Category.OTHER, CampusLocation.NORTH_QUAD_DORMS, "Hostel 15 Roof Balcony", True
             ),
         ]
 
-        # Populate listings with random distribution among students
+        # Populate listings with images and random distribution among students
         created_listings = []
         for i, (title, desc, price, category, location, campus_loc_text, is_sold) in enumerate(raw_items):
             seller = created_users[i % len(created_users)]
             status = ListingStatus.SOLD if is_sold else ListingStatus.AVAILABLE
+
+            # Assign category-matched photo
+            photo_choices = stored_category_images.get(category, [])
+            assigned_photo = photo_choices[i % len(photo_choices)] if photo_choices else None
+
             listing = Listing.objects.create(
                 seller=seller,
                 title=title,
                 description=desc,
                 price=Decimal(price),
                 category=category,
+                image=assigned_photo,
                 pickup_location=location,
                 campus_pickup_location=campus_loc_text,
                 status=status,
@@ -675,7 +774,6 @@ class Command(BaseCommand):
         self.stdout.write("Populating realistic Wishlist favorites...")
         saved_count = 0
         for listing in created_listings:
-            # Randomly bookmark some listings by other students (exclude seller)
             other_users = [u for u in created_users if u != listing.seller]
             sample_favs = random.sample(other_users, k=random.choice([0, 1, 2, 3]))
             for user in sample_favs:
@@ -683,6 +781,6 @@ class Command(BaseCommand):
                 saved_count += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"Successfully seeded database with {len(created_listings)} realistic campus listings, "
+            f"Successfully seeded database with {len(created_listings)} realistic campus listings with pictures, "
             f"{len(created_users)} verified student accounts, and {saved_count} wishlist bookmarks!"
         ))
