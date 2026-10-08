@@ -20,28 +20,20 @@ from .utils import generate_otp, send_otp_email, send_password_reset_otp_email
 User = get_user_model()
 
 
-def dispatch_otp_email(user, otp_code: str):
+def dispatch_otp_email(user, otp_code: str) -> bool:
     """
-    Dispatch OTP email. Runs synchronously in test runs for mail.outbox assertions,
-    and asynchronously via threading in production for instant HTTP response times.
+    Dispatch OTP email synchronously to ensure the SMTP socket completes
+    and prevent thread termination issues in local dev / WSGI workers.
     """
-    if 'test' in sys.argv:
-        send_otp_email(user, otp_code)
-    else:
-        thread = threading.Thread(target=send_otp_email, args=(user, otp_code), daemon=True)
-        thread.start()
+    return send_otp_email(user, otp_code)
 
 
-def dispatch_password_reset_otp_email(user, otp_code: str):
+def dispatch_password_reset_otp_email(user, otp_code: str) -> bool:
     """
-    Dispatch Password Reset OTP email. Runs synchronously in test runs for mail.outbox assertions,
-    and asynchronously via threading in production for instant HTTP response times.
+    Dispatch Password Reset OTP email synchronously to ensure the SMTP socket completes
+    and prevent thread termination issues in local dev / WSGI workers.
     """
-    if 'test' in sys.argv:
-        send_password_reset_otp_email(user, otp_code)
-    else:
-        thread = threading.Thread(target=send_password_reset_otp_email, args=(user, otp_code), daemon=True)
-        thread.start()
+    return send_password_reset_otp_email(user, otp_code)
 
 
 def register_view(request):
@@ -87,15 +79,22 @@ def register_view(request):
             )
 
             # Dispatch verification email
-            dispatch_otp_email(user, otp_code)
+            sent = dispatch_otp_email(user, otp_code)
 
             # Store email in session for convenient fallback
             request.session['verify_email'] = user.email
 
-            messages.info(
-                request,
-                f"A 6-digit verification code was sent to {user.email}. Enter it below to activate your account."
-            )
+            if sent:
+                messages.info(
+                    request,
+                    f"A 6-digit verification code was sent to {user.email}. "
+                    f"If you don't see it, check your Spam / Promotions folder."
+                )
+            else:
+                messages.warning(
+                    request,
+                    f"Email delivery note: For local testing, your verification code is: {otp_code}"
+                )
             query_params = urlencode({'email': user.email})
             return redirect(f"{reverse('accounts:verify_otp')}?{query_params}")
         else:
@@ -242,12 +241,19 @@ def resend_otp_view(request):
         otp_record.save()
 
         # Send email
-        dispatch_otp_email(user, new_otp)
+        sent = dispatch_otp_email(user, new_otp)
         request.session['verify_email'] = user.email
-        messages.success(
-            request,
-            f"A fresh 6-digit verification code has been dispatched to {user.email}."
-        )
+        if sent:
+            messages.success(
+                request,
+                f"A fresh 6-digit verification code has been dispatched to {user.email}. "
+                f"Please check your inbox and Spam folder."
+            )
+        else:
+            messages.warning(
+                request,
+                f"Email delivery note: For local testing, your verification code is: {new_otp}"
+            )
 
     query_params = urlencode({'email': user.email})
     return redirect(f"{reverse('accounts:verify_otp')}?{query_params}")
@@ -338,15 +344,22 @@ def forgot_password_view(request):
                 )
 
                 # Dispatch password reset email
-                dispatch_password_reset_otp_email(user, otp_code)
+                sent = dispatch_password_reset_otp_email(user, otp_code)
 
                 # Store email in session
                 request.session['reset_email'] = user.email
 
-                messages.info(
-                    request,
-                    f"A 6-digit password reset code was sent to {user.email}. Enter it below to set a new password."
-                )
+                if sent:
+                    messages.info(
+                        request,
+                        f"A 6-digit password reset code was sent to {user.email}. "
+                        f"Please check your inbox and Spam folder."
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        f"Email delivery note: For local testing, your reset code is: {otp_code}"
+                    )
             else:
                 # Anti-enumeration response
                 messages.info(

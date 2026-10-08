@@ -67,6 +67,14 @@ if railway_public_domain:
     if railway_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(railway_origin)
 
+if railway_static_url:
+    railway_static_origin = f'https://{railway_static_url}'
+    if railway_static_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_static_origin)
+
+# Trust reverse proxy header from Railway / cloud providers
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -131,14 +139,20 @@ if 'test' in sys.argv:
         }
     }
 elif DATABASE_URL:
+    # Supabase Transaction Pooler (port 6543) uses PgBouncer in transaction mode.
+    # When using transaction pooling, disable server-side cursors and set conn_max_age=0.
+    is_transaction_pooler = ':6543' in DATABASE_URL or os.environ.get('DISABLE_SERVER_SIDE_CURSORS', '').lower() in ('true', '1')
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
+            conn_max_age=0 if is_transaction_pooler else int(os.environ.get('CONN_MAX_AGE', 600)),
+            conn_health_checks=not is_transaction_pooler,
             ssl_require=True,
         )
     }
+    if is_transaction_pooler:
+        DATABASES['default'].setdefault('OPTIONS', {})
+        DATABASES['default']['OPTIONS']['disable_server_side_cursors'] = True
 else:
     DATABASES = {
         'default': {
@@ -183,6 +197,8 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
+    if os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1'):
+        SECURE_SSL_REDIRECT = True
 
 
 # Media files & Storage Configuration
@@ -211,6 +227,8 @@ if SUPABASE_S3_ACCESS_KEY:
         endpoint_clean = AWS_S3_ENDPOINT_URL.replace('https://', '').replace('http://', '').rstrip('/')
         base_host = endpoint_clean.split('/storage')[0] if '/storage' in endpoint_clean else endpoint_clean
         AWS_S3_CUSTOM_DOMAIN = f"{base_host}/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}"
+
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
     STORAGES = {
         "default": {
@@ -249,11 +267,20 @@ LOGIN_REDIRECT_URL = 'marketplace:listing_list'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # Email Configuration (Gmail SMTP with local fallback)
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # 16-character Google App Password
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').strip()  # 16-character Google App Password
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
+
+# Secure TLS (port 587) vs SSL (port 465) mutual exclusivity handling
+if EMAIL_PORT == 465 or os.environ.get('EMAIL_USE_SSL', 'False').lower() in ('true', '1'):
+    EMAIL_USE_SSL = True
+    EMAIL_USE_TLS = False
+else:
+    EMAIL_USE_SSL = False
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1')
+
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
     f"Campus Marketplace <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Campus Marketplace <no-reply@campusmarketplace.local>"

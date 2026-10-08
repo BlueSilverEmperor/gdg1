@@ -23,7 +23,7 @@ def send_otp_email(user, otp_code: str) -> bool:
     Dispatches a branded HTML and plain-text email with the OTP code
     and expiration details. Returns True on success, False on failure.
     """
-    subject = f"{otp_code} is your Campus Marketplace verification code"
+    subject = f"Your Campus Marketplace Verification Code: {otp_code}"
     context = {
         'user': user,
         'otp_code': otp_code,
@@ -67,7 +67,7 @@ def send_password_reset_otp_email(user, otp_code: str) -> bool:
     Dispatches a branded HTML and plain-text password reset email with the OTP code,
     10-minute validity, and security advisory. Returns True on success, False on failure.
     """
-    subject = f"{otp_code} is your Campus Marketplace password reset code"
+    subject = f"Your Campus Marketplace Password Reset Code: {otp_code}"
     context = {
         'user': user,
         'otp_code': otp_code,
